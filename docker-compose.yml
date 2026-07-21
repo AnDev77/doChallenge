@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: doChallenge-mysql
+    environment:
+      MYSQL_DATABASE: doChallenge
+      MYSQL_USER: doChallenge
+      MYSQL_PASSWORD: doChallenge
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - doChallenge_mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7.4
+    container_name: doChallenge-redis
+    ports:
+      - "6379:6379"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: doChallenge-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  doChallenge_mysql_data:
