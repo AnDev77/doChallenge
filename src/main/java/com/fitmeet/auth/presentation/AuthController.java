@@ -1,9 +1,13 @@
 package com.fitmeet.auth.presentation;
 
+import com.fitmeet.auth.application.AuthService;
 import com.fitmeet.auth.application.EmailVerificationService;
+import com.fitmeet.auth.domain.AccessToken;
 import com.fitmeet.auth.presentation.request.ConfirmEmailVerificationRequest;
+import com.fitmeet.auth.presentation.request.LoginRequest;
 import com.fitmeet.auth.presentation.request.SendEmailVerificationRequest;
 import com.fitmeet.auth.presentation.request.SignupRequest;
+import com.fitmeet.auth.presentation.response.LoginResponse;
 import com.fitmeet.auth.presentation.response.SignupResponse;
 import com.fitmeet.common.response.ApiResponse;
 import com.fitmeet.member.application.MemberService;
@@ -22,10 +26,16 @@ public class AuthController {
 
     private final MemberService memberService;
     private final EmailVerificationService emailVerificationService;
+    private final AuthService authService;
 
-    public AuthController(MemberService memberService, EmailVerificationService emailVerificationService) {
+    public AuthController(
+            MemberService memberService,
+            EmailVerificationService emailVerificationService,
+            AuthService authService
+    ) {
         this.memberService = memberService;
         this.emailVerificationService = emailVerificationService;
+        this.authService = authService;
     }
 
     @PostMapping("/email-verifications/send")
@@ -47,5 +57,11 @@ public class AuthController {
         Member member = memberService.signupVerifiedMember(request.email(), request.password(), request.nickname());
         emailVerificationService.consumeVerifiedEmail(member.getEmail());
         return ApiResponse.success(SignupResponse.from(member));
+    }
+
+    @PostMapping("/login")
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        AccessToken accessToken = authService.login(request.email(), request.password());
+        return ApiResponse.success(new LoginResponse("Bearer", accessToken.value(), accessToken.expiresInSeconds()));
     }
 }
