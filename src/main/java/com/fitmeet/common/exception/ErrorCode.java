@@ -9,7 +9,9 @@ public enum ErrorCode {
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "AUTH_001", "Email is already registered."),
     EMAIL_VERIFICATION_CODE_NOT_FOUND(HttpStatus.BAD_REQUEST, "AUTH_002", "Email verification code is expired or not found."),
     EMAIL_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_003", "Email verification code does not match."),
-    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_004", "Email verification is required.");
+    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_004", "Email verification is required."),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_005", "Invalid email or password."),
+    INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "AUTH_006", "Member is not active.");
 
     private final HttpStatus status;
     private final String code;

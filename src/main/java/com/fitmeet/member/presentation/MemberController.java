@@ -24,4 +24,5 @@ public class MemberController {
         Member member = memberService.getById(memberId);
         return ApiResponse.success(MemberResponse.from(member));
     }
+
 }
