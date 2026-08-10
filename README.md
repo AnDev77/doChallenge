@@ -16,7 +16,8 @@ Spring Boot backend for a local exercise meetup and challenge service.
 ## Docs
 
 - [Auth and Member API](docs/api/auth-member-api.md)
-- [Day 1 Notes](docs/architecture/day-01.md)
+- [01 Auth Email Login](docs/architecture/01-auth-email-login.md)
+- [02 Meetup and Chat Room Foundation](docs/architecture/02-meetup-chat-room-foundation.md)
 
 ## Package Structure
 
