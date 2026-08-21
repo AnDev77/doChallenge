@@ -1,4 +1,4 @@
-# Day 1 Notes
+# 01 - Auth Email Login
 
 ## Goal
 

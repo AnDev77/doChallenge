@@ -11,7 +11,16 @@ public enum ErrorCode {
     EMAIL_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_003", "Email verification code does not match."),
     EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_004", "Email verification is required."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_005", "Invalid email or password."),
-    INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "AUTH_006", "Member is not active.");
+    INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "AUTH_006", "Member is not active."),
+    MEETUP_NOT_FOUND(HttpStatus.NOT_FOUND, "MEETUP_001", "Meetup not found."),
+    INVALID_MEETUP_CAPACITY(HttpStatus.BAD_REQUEST, "MEETUP_002", "Meetup capacity must be at least 2."),
+    INVALID_MEETUP_LOCATION(HttpStatus.BAD_REQUEST, "MEETUP_003", "Meetup location is invalid."),
+    MEETUP_NOT_RECRUITING(HttpStatus.BAD_REQUEST, "MEETUP_004", "Meetup is not recruiting."),
+    MEETUP_ALREADY_JOINED(HttpStatus.CONFLICT, "MEETUP_005", "Member already joined this meetup."),
+    MEETUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "MEETUP_006", "Meetup capacity is exceeded."),
+    CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "Chat room not found."),
+    CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CHAT_002", "Chat room access is denied."),
+    INVALID_CHAT_MESSAGE(HttpStatus.BAD_REQUEST, "CHAT_003", "Chat message is invalid.");
 
     private final HttpStatus status;
     private final String code;
