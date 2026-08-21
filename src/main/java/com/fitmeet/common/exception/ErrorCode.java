@@ -17,7 +17,10 @@ public enum ErrorCode {
     INVALID_MEETUP_LOCATION(HttpStatus.BAD_REQUEST, "MEETUP_003", "Meetup location is invalid."),
     MEETUP_NOT_RECRUITING(HttpStatus.BAD_REQUEST, "MEETUP_004", "Meetup is not recruiting."),
     MEETUP_ALREADY_JOINED(HttpStatus.CONFLICT, "MEETUP_005", "Member already joined this meetup."),
-    MEETUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "MEETUP_006", "Meetup capacity is exceeded.");
+    MEETUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "MEETUP_006", "Meetup capacity is exceeded."),
+    CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "Chat room not found."),
+    CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CHAT_002", "Chat room access is denied."),
+    INVALID_CHAT_MESSAGE(HttpStatus.BAD_REQUEST, "CHAT_003", "Chat message is invalid.");
 
     private final HttpStatus status;
     private final String code;

@@ -70,6 +70,13 @@ public class ChatRoom {
         return new ChatRoom(meetupId, ChatRoomType.MEETUP);
     }
 
+    public void recordLastMessage(Long messageId, String content, LocalDateTime messageCreatedAt) {
+        this.lastMessageId = messageId;
+        this.lastMessageContent = content;
+        this.lastMessageAt = messageCreatedAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public Long getId() {
         return id;
     }

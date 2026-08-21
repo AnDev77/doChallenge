@@ -6,5 +6,7 @@ public interface MeetupMemberRepository {
 
     boolean existsByMeetupIdAndMemberId(Long meetupId, Long memberId);
 
+    boolean existsByMeetupIdAndMemberIdAndStatus(Long meetupId, Long memberId, MeetupMemberStatus status);
+
     int countByMeetupIdAndStatus(Long meetupId, MeetupMemberStatus status);
 }
