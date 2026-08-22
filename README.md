@@ -19,6 +19,7 @@ Spring Boot backend for a local exercise meetup and challenge service.
 - [01 Auth Email Login](docs/architecture/01-auth-email-login.md)
 - [02 Meetup and Chat Room Foundation](docs/architecture/02-meetup-chat-room-foundation.md)
 - [03 Chat Message and Read State](docs/architecture/03-chat-message-read-state.md)
+- [04 WebSocket Chat Structure](docs/architecture/04-websocket-chat-structure.md)
 
 ## Package Structure
 
