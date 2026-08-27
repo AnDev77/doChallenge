@@ -46,8 +46,47 @@ sequenceDiagram
     Chat->>Event: publish ChatMessageCreatedEvent
     Event->>Handler: AFTER_COMMIT
     Handler->>DB: find joined meetup members
-    Handler->>SSE: send to receivers except sender
+    Handler->>SSE: send to receivers except sender and active room members
     SSE-->>Receiver: CHAT_MESSAGE_CREATED
+```
+
+## Active Room Presence
+
+The server keeps a lightweight in-memory presence map for the first version.
+
+```text
+SEND /app/chat/rooms/{roomId}/enter
+{
+  "memberId": 2
+}
+
+SEND /app/chat/rooms/{roomId}/leave
+{
+  "memberId": 2
+}
+```
+
+When a chat message is created, SSE notification is skipped for:
+
+```text
+1. the sender
+2. members currently marked as inside the same chat room
+```
+
+Presence is indexed by WebSocket session id.
+
+```text
+sessionId -> [(roomId, memberId)]
+roomId -> memberId -> session count
+```
+
+If the browser closes abruptly and the client cannot send `leave`, Spring raises `SessionDisconnectEvent`.
+
+```text
+SessionDisconnectEvent
+  -> ChatWebSocketSessionEventHandler
+  -> ChatRoomPresenceService.disconnect(sessionId)
+  -> remove all room presence records for that session
 ```
 
 ## Why Spring Event First
@@ -70,15 +109,13 @@ Later:
 
 ## Current Limitation
 
-The server does not yet know whether the receiver is currently looking at the same chat room.
-
-So the first version sends SSE to connected receivers except the sender.
+Room presence is currently in-memory and tied to WebSocket session lifecycle.
 
 ```text
 Not yet implemented:
-- active room presence
 - offline notification persistence
 - Redis unread count cache
+- Redis-backed active room presence for multi-server deployment
 - multi-device notification policy
 ```
 
@@ -92,4 +129,5 @@ Not yet implemented:
 5. AFTER_COMMIT event handling and why notification should not fire before DB commit
 6. Multi-session policy: one member can have multiple open SSE emitters
 7. Future Redis role: online state, unread count, and multi-server event fan-out
+8. Presence cleanup by SessionDisconnectEvent
 ```

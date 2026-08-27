@@ -1,5 +1,6 @@
 package com.fitmeet.notification.application;
 
+import com.fitmeet.chat.application.ChatRoomPresenceService;
 import com.fitmeet.chat.application.event.ChatMessageCreatedEvent;
 import com.fitmeet.meetup.domain.MeetupMemberRepository;
 import com.fitmeet.meetup.domain.MeetupMemberStatus;
@@ -12,13 +13,16 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class ChatNotificationEventHandler {
 
     private final MeetupMemberRepository meetupMemberRepository;
+    private final ChatRoomPresenceService chatRoomPresenceService;
     private final NotificationSseService notificationSseService;
 
     public ChatNotificationEventHandler(
             MeetupMemberRepository meetupMemberRepository,
+            ChatRoomPresenceService chatRoomPresenceService,
             NotificationSseService notificationSseService
     ) {
         this.meetupMemberRepository = meetupMemberRepository;
+        this.chatRoomPresenceService = chatRoomPresenceService;
         this.notificationSseService = notificationSseService;
     }
 
@@ -31,6 +35,9 @@ public class ChatNotificationEventHandler {
 
         for (Long receiverId : receiverIds) {
             if (receiverId.equals(event.senderMemberId())) {
+                continue;
+            }
+            if (chatRoomPresenceService.isInRoom(event.roomId(), receiverId)) {
                 continue;
             }
             notificationSseService.send(receiverId, NotificationEvent.chatMessageCreated(
