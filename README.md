@@ -20,6 +20,9 @@ Spring Boot backend for a local exercise meetup and challenge service.
 - [02 Meetup and Chat Room Foundation](docs/architecture/02-meetup-chat-room-foundation.md)
 - [03 Chat Message and Read State](docs/architecture/03-chat-message-read-state.md)
 - [04 WebSocket Chat Structure](docs/architecture/04-websocket-chat-structure.md)
+- [05 SSE Notification](docs/architecture/05-sse-notification.md)
+- [Socket Study](docs/study/socket_study.md)
+- [Troubleshooting 01 Chat Room Presence Cleanup](docs/troubleshooting/01-chat-presence-cleanup.md)
 
 ## Package Structure
 

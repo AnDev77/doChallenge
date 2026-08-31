@@ -1,5 +1,6 @@
 package com.fitmeet.chat.application;
 
+import com.fitmeet.chat.application.event.ChatMessageCreatedEvent;
 import com.fitmeet.chat.domain.ChatMessage;
 import com.fitmeet.chat.domain.ChatMessageRepository;
 import com.fitmeet.chat.domain.ChatRoom;
@@ -12,6 +13,7 @@ import com.fitmeet.meetup.domain.MeetupMemberRepository;
 import com.fitmeet.meetup.domain.MeetupMemberStatus;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,17 +24,20 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomReadStateRepository readStateRepository;
     private final MeetupMemberRepository meetupMemberRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ChatService(
             ChatRoomRepository chatRoomRepository,
             ChatMessageRepository chatMessageRepository,
             ChatRoomReadStateRepository readStateRepository,
-            MeetupMemberRepository meetupMemberRepository
+            MeetupMemberRepository meetupMemberRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.readStateRepository = readStateRepository;
         this.meetupMemberRepository = meetupMemberRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -41,6 +46,15 @@ public class ChatService {
 
         ChatMessage message = chatMessageRepository.save(ChatMessage.text(roomId, senderMemberId, content));
         room.recordLastMessage(message.getId(), message.getContent(), message.getCreatedAt());
+
+        eventPublisher.publishEvent(new ChatMessageCreatedEvent(
+                room.getId(),
+                room.getMeetupId(),
+                message.getId(),
+                message.getSenderMemberId(),
+                message.getContent(),
+                message.getCreatedAt()
+        ));
 
         return new SendChatMessageResult(
                 message.getId(),

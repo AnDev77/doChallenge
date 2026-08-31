@@ -1,14 +1,17 @@
 package com.fitmeet.chat.presentation.websocket;
 
+import com.fitmeet.chat.application.ChatRoomPresenceService;
 import com.fitmeet.chat.application.ChatService;
 import com.fitmeet.chat.application.ReadChatRoomResult;
 import com.fitmeet.chat.application.SendChatMessageResult;
+import com.fitmeet.chat.presentation.websocket.request.WebSocketChatRoomPresenceRequest;
 import com.fitmeet.chat.presentation.websocket.request.WebSocketChatMessageRequest;
 import com.fitmeet.chat.presentation.websocket.request.WebSocketReadChatRoomRequest;
 import com.fitmeet.chat.presentation.websocket.response.ChatMessageCreatedEvent;
 import com.fitmeet.chat.presentation.websocket.response.ChatRoomReadEvent;
 import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
@@ -17,11 +20,35 @@ import org.springframework.stereotype.Controller;
 public class ChatWebSocketController {
 
     private final ChatService chatService;
+    private final ChatRoomPresenceService chatRoomPresenceService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public ChatWebSocketController(ChatService chatService, SimpMessagingTemplate messagingTemplate) {
+    public ChatWebSocketController(
+            ChatService chatService,
+            ChatRoomPresenceService chatRoomPresenceService,
+            SimpMessagingTemplate messagingTemplate
+    ) {
         this.chatService = chatService;
+        this.chatRoomPresenceService = chatRoomPresenceService;
         this.messagingTemplate = messagingTemplate;
+    }
+
+    @MessageMapping("/chat/rooms/{roomId}/enter")
+    public void enterRoom(
+            @Header("simpSessionId") String sessionId,
+            @DestinationVariable Long roomId,
+            @Valid WebSocketChatRoomPresenceRequest request
+    ) {
+        chatRoomPresenceService.enter(sessionId, roomId, request.memberId());
+    }
+
+    @MessageMapping("/chat/rooms/{roomId}/leave")
+    public void leaveRoom(
+            @Header("simpSessionId") String sessionId,
+            @DestinationVariable Long roomId,
+            @Valid WebSocketChatRoomPresenceRequest request
+    ) {
+        chatRoomPresenceService.leave(sessionId, roomId, request.memberId());
     }
 
     @MessageMapping("/chat/rooms/{roomId}/messages")

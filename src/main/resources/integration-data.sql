@@ -18,4 +18,14 @@ insert into member (
     current_timestamp,
     current_timestamp,
     current_timestamp
+), (
+    2,
+    'member@example.com',
+    'integration-password-hash',
+    'member',
+    'USER',
+    'ACTIVE',
+    current_timestamp,
+    current_timestamp,
+    current_timestamp
 );
