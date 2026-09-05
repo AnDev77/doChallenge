@@ -37,3 +37,7 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.named('compileTestJava') {
+    source sourceSets.main.java
+}

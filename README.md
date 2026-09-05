@@ -21,8 +21,10 @@ Spring Boot backend for a local exercise meetup and challenge service.
 - [03 Chat Message and Read State](docs/architecture/03-chat-message-read-state.md)
 - [04 WebSocket Chat Structure](docs/architecture/04-websocket-chat-structure.md)
 - [05 SSE Notification](docs/architecture/05-sse-notification.md)
+- [06 Redis Chat Performance Strategy](docs/architecture/06-redis-chat-performance-strategy.md)
 - [Socket Study](docs/study/socket_study.md)
 - [Troubleshooting 01 Chat Room Presence Cleanup](docs/troubleshooting/01-chat-presence-cleanup.md)
+- [Troubleshooting 02 Gradle Javac Windows Sandbox](docs/troubleshooting/02-gradle-javac-windows-sandbox.md)
 
 ## Package Structure
 
