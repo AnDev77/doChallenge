@@ -6,7 +6,7 @@ This work unit adds the first user notification stream with SSE.
 
 ```text
 GET /api/v1/notifications/subscribe
-Header: X-Member-Id
+Header: Authorization: Bearer {accessToken}
 Produces: text/event-stream
 ```
 

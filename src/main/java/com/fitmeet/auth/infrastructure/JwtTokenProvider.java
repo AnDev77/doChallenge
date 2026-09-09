@@ -1,9 +1,16 @@
 package com.fitmeet.auth.infrastructure;
 
 import com.fitmeet.auth.domain.AccessToken;
+import com.fitmeet.auth.domain.AuthenticatedMember;
 import com.fitmeet.auth.domain.TokenProvider;
+import com.fitmeet.common.exception.BaseException;
+import com.fitmeet.common.exception.ErrorCode;
 import com.fitmeet.member.domain.Member;
+import com.fitmeet.member.domain.MemberRole;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
@@ -21,14 +28,17 @@ public class JwtTokenProvider implements TokenProvider {
     private final String secret;
     private final long accessTokenExpirationSeconds;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.access-token-expiration-seconds}") long accessTokenExpirationSeconds
+            @Value("${app.jwt.access-token-expiration-seconds}") long accessTokenExpirationSeconds,
+            ObjectMapper objectMapper
     ) {
         this.secret = secret;
         this.accessTokenExpirationSeconds = accessTokenExpirationSeconds;
         this.clock = Clock.systemUTC();
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -51,6 +61,41 @@ public class JwtTokenProvider implements TokenProvider {
         String signaturePart = sign(headerPart + "." + payloadPart);
 
         return new AccessToken(headerPart + "." + payloadPart + "." + signaturePart, accessTokenExpirationSeconds);
+    }
+
+    @Override
+    public AuthenticatedMember parseAccessToken(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) {
+                throw new BaseException(ErrorCode.INVALID_ACCESS_TOKEN);
+            }
+
+            String unsignedToken = parts[0] + "." + parts[1];
+            String expectedSignature = sign(unsignedToken);
+            if (!MessageDigest.isEqual(
+                    expectedSignature.getBytes(StandardCharsets.UTF_8),
+                    parts[2].getBytes(StandardCharsets.UTF_8)
+            )) {
+                throw new BaseException(ErrorCode.INVALID_ACCESS_TOKEN);
+            }
+
+            JsonNode payload = objectMapper.readTree(Base64.getUrlDecoder().decode(parts[1]));
+            long expiresAt = payload.path("exp").asLong();
+            if (Instant.now(clock).getEpochSecond() >= expiresAt) {
+                throw new BaseException(ErrorCode.INVALID_ACCESS_TOKEN);
+            }
+
+            return new AuthenticatedMember(
+                    payload.path("sub").asLong(),
+                    payload.path("email").asText(),
+                    MemberRole.valueOf(payload.path("role").asText())
+            );
+        } catch (BaseException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new BaseException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
     }
 
     private String sign(String content) {
