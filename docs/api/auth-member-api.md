@@ -212,6 +212,29 @@ Login does not encode the request password again. BCrypt hashes can differ for t
 passwordEncoder.matches(rawPassword, member.getPasswordHash())
 ```
 
+## Protected API Authentication
+
+Login returns the access token used by protected APIs.
+
+```http
+Authorization: Bearer {accessToken}
+```
+
+Examples:
+
+```http
+POST /api/v1/meetups
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+```http
+GET /api/v1/notifications/subscribe
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Accept: text/event-stream
+```
+
+The previous `X-Member-Id` header was a development-only bridge. REST and SSE APIs now resolve `memberId` from the verified JWT principal.
+
 ## Get Member
 
 ```text
@@ -234,7 +257,7 @@ Response:
 }
 ```
 
-This endpoint is currently unprotected. It should be protected after the JWT authentication filter is implemented.
+This endpoint is protected by the JWT authentication filter.
 
 ## Error Codes
 
@@ -249,6 +272,8 @@ This endpoint is currently unprotected. It should be protected after the JWT aut
 | 400 | `AUTH_004` | Email verification is required. |
 | 401 | `AUTH_005` | Invalid email or password. |
 | 403 | `AUTH_006` | Member is not active. |
+| 401 | `AUTH_007` | Authentication is required. |
+| 401 | `AUTH_008` | Access token is invalid. |
 
 ## Manual Test Script
 

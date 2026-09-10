@@ -12,6 +12,8 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_004", "Email verification is required."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_005", "Invalid email or password."),
     INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "AUTH_006", "Member is not active."),
+    AUTHENTICATION_REQUIRED(HttpStatus.UNAUTHORIZED, "AUTH_007", "Authentication is required."),
+    INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_008", "Access token is invalid."),
     MEETUP_NOT_FOUND(HttpStatus.NOT_FOUND, "MEETUP_001", "Meetup not found."),
     INVALID_MEETUP_CAPACITY(HttpStatus.BAD_REQUEST, "MEETUP_002", "Meetup capacity must be at least 2."),
     INVALID_MEETUP_LOCATION(HttpStatus.BAD_REQUEST, "MEETUP_003", "Meetup location is invalid."),

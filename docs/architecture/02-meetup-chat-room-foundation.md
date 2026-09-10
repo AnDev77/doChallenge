@@ -59,15 +59,15 @@ chat_room.meetupId -> meetup.id
 
 This keeps domains loosely coupled and makes later modularization easier.
 
-## Temporary Authentication Context
+## Authentication Context
 
-The meetup APIs currently receive the member id through `X-Member-Id`.
+The meetup APIs receive the member id from the authenticated JWT principal.
 
 ```http
-X-Member-Id: 1
+Authorization: Bearer {accessToken}
 ```
 
-This is a temporary bridge until the JWT authentication filter is implemented. After that, `memberId` should come from the authenticated principal.
+The controller does not trust a client-supplied member id header. `JwtAuthenticationFilter` validates the token and stores `AuthenticatedMember` in the Spring Security context. The controller then reads it through `@AuthenticationPrincipal`.
 
 ## APIs
 

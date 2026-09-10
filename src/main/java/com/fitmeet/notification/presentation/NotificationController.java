@@ -1,9 +1,10 @@
 package com.fitmeet.notification.presentation;
 
+import com.fitmeet.auth.domain.AuthenticatedMember;
 import com.fitmeet.notification.application.NotificationSseService;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -19,7 +20,7 @@ public class NotificationController {
     }
 
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribe(@RequestHeader("X-Member-Id") Long memberId) {
-        return notificationSseService.subscribe(memberId);
+    public SseEmitter subscribe(@AuthenticationPrincipal AuthenticatedMember member) {
+        return notificationSseService.subscribe(member.memberId());
     }
 }
