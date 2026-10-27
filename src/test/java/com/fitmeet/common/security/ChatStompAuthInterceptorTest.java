@@ -3,12 +3,15 @@ package com.fitmeet.common.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fitmeet.auth.domain.AuthenticatedMember;
 import com.fitmeet.auth.domain.TokenProvider;
 import com.fitmeet.chat.application.ChatService;
+import com.fitmeet.common.exception.BaseException;
+import com.fitmeet.common.exception.ErrorCode;
 import com.fitmeet.member.domain.MemberRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +55,15 @@ class ChatStompAuthInterceptorTest {
                 .isInstanceOf(IllegalArgumentException.class);
         interceptor.preSend(frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/5/reads", null, true), channel);
         verify(chat).requireRoomAccess(5L, 7L);
+    }
+
+    @Test
+    void subscriptionRejectsAuthenticatedNonMember() {
+        doThrow(new BaseException(ErrorCode.CHAT_ROOM_ACCESS_DENIED))
+                .when(chat).requireRoomAccess(6L, 7L);
+        assertThatThrownBy(() -> interceptor.preSend(
+                frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/6", null, true), channel))
+                .isInstanceOf(BaseException.class);
     }
 
     @Test
