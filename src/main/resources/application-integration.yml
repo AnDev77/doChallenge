@@ -27,7 +27,15 @@ spring:
   mail:
     host: localhost
     port: 1025
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.starttls.required: false
 
 logging:
   level:
     org.hibernate.SQL: debug
+
+app:
+  mail:
+    from: no-reply@shockgraph.local

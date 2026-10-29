@@ -1,4 +1,6 @@
-# 01 - Auth Email Login
+# 이메일 인증과 회원 로그인
+
+2026-10-30: 현재 가입은 인증 확인 뒤 발급한 10분 일회용 증표를 요구한다. `docs/api/auth-member-api.md`와 `docs/reviews/email-rate-limit-and-web-contract-review.md`가 최신 계약이다. 아래 초기 구조 설명은 이력이며 금융 종목방 완료를 뜻하지 않는다.
 
 ## Goal
 
