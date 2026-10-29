@@ -17,14 +17,27 @@ public class RedisEmailVerificationRepository implements EmailVerificationReposi
     private static final DefaultRedisScript<Long> CONFIRM = new DefaultRedisScript<>("""
             local code = redis.call('GET', KEYS[1])
             if not code then return 0 end
-            if code ~= ARGV[1] then return -1 end
+            if code ~= ARGV[1] then
+                local attempts = redis.call('INCR', KEYS[3])
+                if attempts == 1 then redis.call('PEXPIRE', KEYS[3], math.max(1, redis.call('PTTL', KEYS[1]))) end
+                if attempts >= 5 then
+                    redis.call('DEL', KEYS[1], KEYS[3])
+                    return -2
+                end
+                return -1
+            end
             redis.call('SET', KEYS[2], ARGV[2], 'EX', 600)
-            redis.call('DEL', KEYS[1])
+            redis.call('DEL', KEYS[1], KEYS[3])
             return 1
             """, Long.class);
     private static final DefaultRedisScript<Long> CONSUME = new DefaultRedisScript<>("""
             if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
             redis.call('DEL', KEYS[1])
+            return 1
+            """, Long.class);
+    private static final DefaultRedisScript<Long> SAVE = new DefaultRedisScript<>("""
+            redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
+            redis.call('DEL', KEYS[2], KEYS[3])
             return 1
             """, Long.class);
     private final StringRedisTemplate redisTemplate;
@@ -35,14 +48,21 @@ public class RedisEmailVerificationRepository implements EmailVerificationReposi
 
     @Override
     public void save(String email, EmailVerificationCode code) {
-        redisTemplate.opsForValue().set(key(email, "code"), code.value(), code.ttl());
+        redisTemplate.execute(SAVE, List.of(key(email, "code"), key(email, "attempts"), key(email, "proof")),
+                code.value(), Long.toString(code.ttl().toMillis()));
+    }
+
+    @Override
+    public void discardCode(String email, String code) {
+        redisTemplate.execute(CONSUME, List.of(key(email, "code")), code);
     }
 
     @Override
     public Confirmation confirm(String email, String code, String proofHash) {
         Long result = redisTemplate.execute(CONFIRM,
-                List.of(key(email, "code"), key(email, "proof")), code, proofHash);
+                List.of(key(email, "code"), key(email, "proof"), key(email, "attempts")), code, proofHash);
         if (Long.valueOf(1).equals(result)) return Confirmation.CONFIRMED;
+        if (Long.valueOf(-2).equals(result)) return Confirmation.ATTEMPTS_EXCEEDED;
         if (Long.valueOf(-1).equals(result)) return Confirmation.MISMATCH;
         return Confirmation.NOT_FOUND;
     }

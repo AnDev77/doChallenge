@@ -1,6 +1,9 @@
 package com.fitmeet.auth.application;
 
 import com.fitmeet.auth.domain.EmailVerificationCode;
+import com.fitmeet.auth.domain.AuthAttemptLimiter;
+import java.util.Locale;
+import org.springframework.mail.MailException;
 import com.fitmeet.auth.domain.EmailVerificationCodeGenerator;
 import com.fitmeet.auth.domain.EmailVerificationRepository;
 import com.fitmeet.auth.domain.EmailVerificationSender;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmailVerificationService {
 
+    private final AuthAttemptLimiter limiter;
     private final SecureRandom random = new SecureRandom();
     private final MemberRepository memberRepository;
     private final EmailVerificationRepository emailVerificationRepository;
@@ -29,8 +33,10 @@ public class EmailVerificationService {
             MemberRepository memberRepository,
             EmailVerificationRepository emailVerificationRepository,
             EmailVerificationCodeGenerator codeGenerator,
-            EmailVerificationSender emailVerificationSender
+            EmailVerificationSender emailVerificationSender,
+            AuthAttemptLimiter limiter
     ) {
+        this.limiter = limiter;
         this.memberRepository = memberRepository;
         this.emailVerificationRepository = emailVerificationRepository;
         this.codeGenerator = codeGenerator;
@@ -46,10 +52,18 @@ public class EmailVerificationService {
 
     @Transactional
     public void send(String email) {
+        String identity = email.strip().toLowerCase(Locale.ROOT);
+        limiter.check("send-email-minute", identity, 1, 60);
+        limiter.check("send-email-hour", identity, 5, 3600);
         validateAvailableEmail(email);
         EmailVerificationCode code = codeGenerator.generate();
         emailVerificationRepository.save(email, code);
-        emailVerificationSender.send(email, code.value());
+        try {
+            emailVerificationSender.send(email, code.value());
+        } catch (MailException exception) {
+            emailVerificationRepository.discardCode(email, code.value());
+            throw new BaseException(ErrorCode.EMAIL_DELIVERY_UNAVAILABLE);
+        }
     }
 
     @Transactional
@@ -61,6 +75,9 @@ public class EmailVerificationService {
         var result = emailVerificationRepository.confirm(email, code, hash(proof));
         if (result == EmailVerificationRepository.Confirmation.NOT_FOUND) {
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_NOT_FOUND);
+        }
+        if (result == EmailVerificationRepository.Confirmation.ATTEMPTS_EXCEEDED) {
+            throw new BaseException(ErrorCode.EMAIL_ATTEMPTS_EXCEEDED);
         }
         if (result != EmailVerificationRepository.Confirmation.CONFIRMED) {
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH);

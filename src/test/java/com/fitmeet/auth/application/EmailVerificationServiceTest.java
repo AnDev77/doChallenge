@@ -14,7 +14,8 @@ class EmailVerificationServiceTest {
     private final EmailVerificationRepository repository = mock(EmailVerificationRepository.class);
     private final EmailVerificationCodeGenerator generator = mock(EmailVerificationCodeGenerator.class);
     private final EmailVerificationSender sender = mock(EmailVerificationSender.class);
-    private final EmailVerificationService service = new EmailVerificationService(members, repository, generator, sender);
+    private final AuthAttemptLimiter limiter = mock(AuthAttemptLimiter.class);
+    private final EmailVerificationService service = new EmailVerificationService(members, repository, generator, sender, limiter);
     private final String email = "test@example.invalid";
 
     @Test void confirmReturnsRandomProofButStoresOnlyHash() {
@@ -48,8 +49,22 @@ class EmailVerificationServiceTest {
 
     @Test void smtpFailurePropagatesAndDoesNotGrantProof() {
         when(generator.generate()).thenReturn(EmailVerificationCode.of("123456", Duration.ofMinutes(5)));
-        doThrow(new IllegalStateException("delivery failed")).when(sender).send(email, "123456");
-        assertThatThrownBy(() -> service.send(email)).isInstanceOf(IllegalStateException.class);
+        doThrow(new org.springframework.mail.MailSendException("delivery failed")).when(sender).send(email, "123456");
+        assertThatThrownBy(() -> service.send(email)).isInstanceOf(BaseException.class);
         verify(repository, never()).confirm(anyString(), anyString(), anyString());
+        verify(repository).discardCode(email, "123456");
     }
+    @Test void throttledRequestNeverSendsMail() {
+        doThrow(new com.fitmeet.common.exception.RateLimitedException(60)).when(limiter)
+                .check("send-email-minute", email, 1, 60);
+        assertThatThrownBy(() -> service.send(email)).isInstanceOf(BaseException.class);
+        verifyNoInteractions(sender, generator, repository);
+    }
+    @Test void emailLimitUsesCaseFoldedIdentity() {
+        when(generator.generate()).thenReturn(EmailVerificationCode.of("123456", Duration.ofMinutes(5)));
+        service.send("TEST@example.invalid");
+        verify(limiter).check("send-email-minute", email, 1, 60);
+        verify(limiter).check("send-email-hour", email, 5, 3600);
+    }
+
 }
