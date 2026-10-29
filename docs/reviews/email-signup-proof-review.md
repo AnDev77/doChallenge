@@ -33,3 +33,7 @@ Redis의 Lua 원자성: https://redis.io/docs/latest/develop/programmability/eva
 OWASP의 난수·만료·일회용 증표 원칙(비밀번호 복구 지침을 가입 증표 설계에 참고): https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html
 
 인증 성공과 가입을 연결하는 실제 보안 개선이다. 메일 인증을 처음부터 새로 구현했다는 성과로 부풀리지 않는다. SMTP 운영과 남용 방어·사용자 화면이 아직 없어 공개 배포 완료로 판정하지 않는다.
+
+## 원격 완료 근거
+
+코드 `441317c`의 [품질 검사](https://github.com/AnDev77/doChallenge/actions/runs/40825591112)에서 전체 35개 시험(신규 13개, 실제 Redis 6개 포함), 실패·오류·생략 0건을 확인했다. 실행 JAR 빌드 및 가입 응답 클래스 포함 검사도 통과했다. 로컬 실행 실패와 실제 SMTP·화면·남용 방어 미완료는 유지한다. 기능 변경은 12개 파일이며, 마지막 기록 갱신은 문서 변경이다.
