@@ -29,7 +29,12 @@ spring:
           auth: false
           starttls:
             enable: false
+            required: false
 
 logging:
   level:
     org.hibernate.SQL: debug
+
+app:
+  mail:
+    from: no-reply@shockgraph.local
