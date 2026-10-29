@@ -7,12 +7,19 @@ import com.fitmeet.auth.domain.EmailVerificationSender;
 import com.fitmeet.common.exception.BaseException;
 import com.fitmeet.common.exception.ErrorCode;
 import com.fitmeet.member.domain.MemberRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.HexFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmailVerificationService {
 
+    private final SecureRandom random = new SecureRandom();
     private final MemberRepository memberRepository;
     private final EmailVerificationRepository emailVerificationRepository;
     private final EmailVerificationCodeGenerator codeGenerator;
@@ -46,29 +53,34 @@ public class EmailVerificationService {
     }
 
     @Transactional
-    public void confirm(String email, String code) {
+    public String confirm(String email, String code) {
         validateAvailableEmail(email);
-        EmailVerificationCode savedCode = emailVerificationRepository.findByEmail(email)
-                .orElseThrow(() -> new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_NOT_FOUND));
-
-        if (!savedCode.matches(code)) {
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        String proof = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        var result = emailVerificationRepository.confirm(email, code, hash(proof));
+        if (result == EmailVerificationRepository.Confirmation.NOT_FOUND) {
+            throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_NOT_FOUND);
+        }
+        if (result != EmailVerificationRepository.Confirmation.CONFIRMED) {
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH);
         }
-
-        emailVerificationRepository.deleteCode(email);
-        emailVerificationRepository.markVerified(email);
+        return proof;
     }
 
-    @Transactional(readOnly = true)
-    public void validateVerifiedEmail(String email) {
-        if (!emailVerificationRepository.isVerified(email)) {
+    public void consumeVerifiedEmail(String email, String proof) {
+        if (proof == null || !proof.matches("[A-Za-z0-9_-]{43}")
+                || !emailVerificationRepository.consumeProof(email, hash(proof))) {
             throw new BaseException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
     }
 
-    @Transactional
-    public void consumeVerifiedEmail(String email) {
-        validateVerifiedEmail(email);
-        emailVerificationRepository.deleteVerified(email);
+    private String hash(String proof) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(proof.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 }
