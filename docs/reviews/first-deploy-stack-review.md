@@ -19,6 +19,7 @@
 - 작업량: 기존 두 기능 분기의 충돌 없는 통합 1건, 운영 파일 8개 이상, 보안/헬스 설정 2곳, 배포 게이트 1개, 실행·복구 문서 1개.
 - 로컬 Docker가 없어 실제 컨테이너 기동은 실행하지 못한다. GitHub Actions에서 Java 21 전체 시험·Redis 통합 시험·실행 JAR·Compose 설정·Docker 이미지·Nginx 설정을 각각 검사한다. 게이트 결과는 PR에 실행 링크로 기록한다.
 - 첫 원격 실행에서 배포 스택 게이트와 이메일 게이트는 성공했으나 기존 채팅 게이트는 Redis 서비스가 없어 이메일 통합 시험이 생략된 사실을 실패로 판정했다. 채팅 게이트에도 Redis 서비스를 추가해 생략 없는 시험으로 다시 확인한다. 웹 Vercel에서 금융 REST를 읽고 쓰기 위해 금융 방 경로의 허용 Origin과 Security CORS 처리를 명시했다.
+- 금융 GET·JWT POST의 브라우저 사전 요청과 미승인 Origin 거부를 실제 Spring Security 필터를 통과하는 `FinanceCorsIntegrationTest`로 검사한다. 단순 설정 문자열 검사나 MockMvc 독립 컨트롤러 시험만으로 운영 CORS 성공을 주장하지 않는다.
 - VM, 공개 API 주소와 TLS 인증서, SMTP 발신 설정과 지정 수신함, Vercel 운영 빌드 설정은 외부 입력이다. 이 값 없이 실제 HTTPS 회원 가입과 두 브라우저 채팅을 성공이라고 주장할 수 없다.
 - 사용자는 Oracle Always Free VM을 선택했으나 아직 인스턴스가 없다. 홈 리전 Ampere A1의 무료 할당·용량 부족 위험, Ubuntu Arm64·공인 IP·TLS 발급 경로를 `deploy/README.md`에 추가했다. 자체 도메인 없이 공개 IP 인증서를 택하면 약 6일 만료와 자동 갱신 검증이 운영 조건이다.
 - Blue/Green은 별도 Java 두 이미지와 Nginx 전환, 공유 MySQL/Redis, 구·신 DB 스키마 호환, 전환·되돌리기 시험으로 설계했다. 현재 Compose는 **단일 슬롯**이며 Blue/Green 또는 무중단을 구현·검증했다고 주장하지 않는다.
