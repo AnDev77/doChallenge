@@ -26,7 +26,8 @@ public enum ErrorCode {
     MEETUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "MEETUP_006", "Meetup capacity is exceeded."),
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "Chat room not found."),
     CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CHAT_002", "Chat room access is denied."),
-    INVALID_CHAT_MESSAGE(HttpStatus.BAD_REQUEST, "CHAT_003", "Chat message is invalid.");
+    INVALID_CHAT_MESSAGE(HttpStatus.BAD_REQUEST, "CHAT_003", "Chat message is invalid."),
+    CHAT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "CHAT_004", "A request ID was already used for different content.");
 
     private final HttpStatus status;
     private final String code;

@@ -18,4 +18,21 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: 전체 Java 시험
-        run: bash ./gradlew test --no-daemon
+        run: bash ./gradlew test bootJar --no-daemon
+      - name: 시험과 실행 JAR 포함 확인
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET, zipfile
+          roots = [ET.parse(p).getroot() for p in glob.glob('build/test-results/test/TEST-*.xml')]
+          assert roots
+          totals = {key: sum(int(r.get(key, 0)) for r in roots) for key in ('tests','failures','errors','skipped')}
+          assert totals['failures'] == totals['errors'] == 0
+          finance_repository = next(r for r in roots if r.get('name', '').endswith('FinanceMessageRepositoryTest'))
+          assert int(finance_repository.get('tests', 0)) == 2
+          assert all(int(finance_repository.get(key, 0)) == 0 for key in ('failures', 'errors', 'skipped'))
+          jars = [p for p in glob.glob('build/libs/*.jar') if not p.endswith('-plain.jar')]
+          assert len(jars) == 1
+          with zipfile.ZipFile(jars[0]) as archive:
+            assert 'BOOT-INF/classes/com/fitmeet/financechat/FinanceChatController.class' in archive.namelist()
+          print(totals)
+          PY

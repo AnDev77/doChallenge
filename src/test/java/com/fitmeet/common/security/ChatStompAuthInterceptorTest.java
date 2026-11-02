@@ -75,6 +75,18 @@ class ChatStompAuthInterceptorTest {
         verify(chat).requireRoomAccess(5L, 7L);
     }
 
+    @Test
+    void financeLiveSubscriptionRequiresIdentityAndNeverAllowsClientPublish() {
+        assertThatThrownBy(() -> interceptor.preSend(frame(StompCommand.SUBSCRIBE,
+                "/topic/finance/rooms/QQQ", null, false), channel)).isInstanceOf(IllegalArgumentException.class);
+        interceptor.preSend(frame(StompCommand.SUBSCRIBE, "/topic/finance/rooms/QQQ", null, true), channel);
+        interceptor.preSend(frame(StompCommand.SUBSCRIBE, "/topic/finance/rooms/SPY", null, true), channel);
+        assertThatThrownBy(() -> interceptor.preSend(frame(StompCommand.SUBSCRIBE,
+                "/topic/finance/rooms/TLT", null, true), channel)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> interceptor.preSend(frame(StompCommand.SEND,
+                "/topic/finance/rooms/QQQ", null, true), channel)).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private Message<byte[]> frame(StompCommand command, String destination, String authorization, boolean loggedIn) {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
         accessor.setLeaveMutable(true);
