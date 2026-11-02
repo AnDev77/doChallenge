@@ -43,6 +43,15 @@ MySQL·Redis·Java 포트는 인터넷에 열지 않는다. 공개 HTTPS는 Ngin
 3. Docker Engine과 Compose 플러그인은 [Docker의 Ubuntu Arm64 공식 설치 절차](https://docs.docker.com/engine/install/ubuntu/)를 따른다. 저장소를 서버에 가져오고 `.env`·TLS 인증서를 서버 안에서만 설정한다.
 4. 자체 도메인이 없다면 [Let's Encrypt의 IP 주소 인증서](https://letsencrypt.org/2026/03/11/shorter-certs-certbot/)를 임시로 쓸 수 있다. Certbot 5.4 이상과 `shortlived` 프로필이 필요하며 유효기간이 약 **6일**이라 자동 갱신·Nginx 재시작 후 검증이 필수다. 인증서 발급 전까지 `VITE_AUTH_ENABLED`·`VITE_CHAT_ENABLED`는 켜지 않는다. 도메인을 확보하면 일반 도메인 인증서로 전환한다.
 
+인스턴스 공인 IP가 생기고 80/TCP가 열렸으며 Nginx가 아직 실행되지 않는 첫 발급에서는 다음 명령을 사용한다. `PUBLIC_IP`는 사용자가 확인한 실제 IP로 지정한다. Certbot 버전과 발급 결과를 먼저 확인하고, `deploy/.env`의 인증서 경로를 `/etc/letsencrypt/live/<공인 IP>/...`로 맞춘다.
+
+```bash
+certbot --version
+sudo certbot certonly --standalone --preferred-profile shortlived --ip-address "$PUBLIC_IP"
+```
+
+IP 인증서 자동 갱신은 Certbot 타이머와 갱신 성공 시 Nginx **컨테이너 재생성**을 함께 설정하고, 만료 시각을 감시해야 한다. 6일마다 수동으로 갱신하는 운영은 첫 배포 완료로 판정하지 않는다. 발급이 제한되면 TLS를 우회하지 않고 도메인 인증서 경로를 선택한다.
+
 ## Blue/Green 확장 경로
 
 첫 배포는 단일 Java 컨테이너로 외부 연결과 데이터 보존을 검증한다. 다음 단계에서 `api-blue`와 `api-green`을 서로 다른 **버전 태그의 이미지**로 실행하고, 두 컨테이너가 같은 MySQL·Redis에 연결되게 한다. Nginx는 검증된 한 색상으로만 신규 트래픽을 보내며, 대기 색상은 DB/Redis health와 인증·읽기·쓰기 합성 스모크를 통과한 뒤 전환한다. 전환 뒤 오류가 나면 Nginx를 이전 색상으로 되돌리고 대기 인스턴스를 유지한다.
