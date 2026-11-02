@@ -11,6 +11,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(RateLimitedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRateLimit(RateLimitedException exception) {
+        return ResponseEntity.status(429).header("Retry-After", Long.toString(exception.getRetryAfterSeconds()))
+                .body(ApiResponse.error(new ErrorResponse(ErrorCode.AUTH_RATE_LIMITED.getCode(),
+                        ErrorCode.AUTH_RATE_LIMITED.getMessage())));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataUnavailable() {
+        return ResponseEntity.status(503).body(ApiResponse.error(new ErrorResponse(
+                ErrorCode.SERVICE_UNAVAILABLE.getCode(), ErrorCode.SERVICE_UNAVAILABLE.getMessage())));
+    }
+
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ApiResponse<Void>> handleBaseException(BaseException exception) {
         ErrorCode errorCode = exception.getErrorCode();
