@@ -32,7 +32,22 @@ MySQL·Redis·Java 포트는 인터넷에 열지 않는다. 공개 HTTPS는 Ngin
 4. 지정 수신함에서 메일 발송→수신→확인→가입→로그인, 로그인 회원의 QQQ·SPY 작성, 다른 브라우저 조회와 재접속 후 누락 복구를 실제로 확인한다. 실제 수신과 두 브라우저 시험 전에는 회원·채팅 기능을 운영 성공으로 표시하지 않는다.
 5. 장애 시 새 앱을 내리고 이전 앱 이미지로 되돌린다. **데이터 볼륨을 지우지 않는다.** DB 구조가 이미 바뀌었으면 앱만 되돌리는 것이 안전하다고 가정하지 않고 백업·스키마 호환성을 먼저 확인한다.
 
-도메인과 TLS 인증서가 정해져야 실제 공개가 가능하다. 컨테이너를 띄운 것과 사용자가 HTTPS에서 회원·대화를 이용하는 것은 별도 판정이다.
+공개 API 주소와 유효한 TLS 인증서가 정해져야 실제 공개가 가능하다. 컨테이너를 띄운 것과 사용자가 HTTPS에서 회원·대화를 이용하는 것은 별도 판정이다.
+
+## Oracle Always Free VM 경로
+
+사용자가 2026-11-02 선택한 첫 호스트 후보는 OCI Always Free의 Ampere A1이다. [Oracle의 현재 한도](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)는 홈 리전에서 합계 2 OCPU·12GB RAM에 해당한다. 첫 단일 VM은 `VM.Standard.A1.Flex`, 2 OCPU·12GB, Ubuntu Arm64, 기본 47GB 이상 부팅 볼륨, 공인 IPv4와 SSH 키를 사용한다. Oracle의 용량 부족 오류가 나면 무료 VM을 즉시 만들 수 없으며 배포 성공을 보장하지 않는다. Docker 공식 MySQL 8.4 이미지는 Arm64도 제공한다.
+
+1. OCI 콘솔의 **Compute → Instances → Create instance**에서 위 Always Free 대상 shape·Ubuntu 이미지를 선택한다. 공개 서브넷/공인 IP를 지정하고 SSH 개인 키를 안전하게 보관한다. 무료 자원 표시와 결제 한도를 콘솔에서 확인한다.
+2. 네트워크 보안 규칙과 Ubuntu 방화벽에서 **22/TCP는 본인 IP만**, 80/443 TCP는 공개로 연다. 3306/6379/8080은 열지 않는다. Ubuntu 로그인 사용자는 `ubuntu`다.
+3. Docker Engine과 Compose 플러그인은 [Docker의 Ubuntu Arm64 공식 설치 절차](https://docs.docker.com/engine/install/ubuntu/)를 따른다. 저장소를 서버에 가져오고 `.env`·TLS 인증서를 서버 안에서만 설정한다.
+4. 자체 도메인이 없다면 [Let's Encrypt의 IP 주소 인증서](https://letsencrypt.org/2026/03/11/shorter-certs-certbot/)를 임시로 쓸 수 있다. Certbot 5.4 이상과 `shortlived` 프로필이 필요하며 유효기간이 약 **6일**이라 자동 갱신·Nginx 재시작 후 검증이 필수다. 인증서 발급 전까지 `VITE_AUTH_ENABLED`·`VITE_CHAT_ENABLED`는 켜지 않는다. 도메인을 확보하면 일반 도메인 인증서로 전환한다.
+
+## Blue/Green 확장 경로
+
+첫 배포는 단일 Java 컨테이너로 외부 연결과 데이터 보존을 검증한다. 다음 단계에서 `api-blue`와 `api-green`을 서로 다른 **버전 태그의 이미지**로 실행하고, 두 컨테이너가 같은 MySQL·Redis에 연결되게 한다. Nginx는 검증된 한 색상으로만 신규 트래픽을 보내며, 대기 색상은 DB/Redis health와 인증·읽기·쓰기 합성 스모크를 통과한 뒤 전환한다. 전환 뒤 오류가 나면 Nginx를 이전 색상으로 되돌리고 대기 인스턴스를 유지한다.
+
+두 색상이 같은 DB를 읽는 동안 `ddl-auto: update`로 스키마를 임의 변경하면 안전한 되돌리기를 보장할 수 없다. Blue/Green 전에는 버전 관리 마이그레이션과 **구버전·신버전 동시 호환**을 먼저 구현한다. 이메일 인증 증표와 채팅 원본은 색상별로 나누지 않는다. 단일 VM Blue/Green은 VM 장애까지 막지 못하며, 실제 무중단 여부는 연결 중인 WebSocket과 진행 중 요청의 전환 시험으로 판정한다. Jenkins는 이 순서를 자동화할 수 있으나 첫 배포 필수는 아니다.
 
 ## 금융 종목방 Redis 캐시와 성능 판정 계획
 
