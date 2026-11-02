@@ -32,7 +32,6 @@ public class SecurityConfig {
 
         return http
                 .cors(Customizer.withDefaults())
-                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
