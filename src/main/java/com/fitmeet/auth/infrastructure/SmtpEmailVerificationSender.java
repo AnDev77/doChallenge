@@ -10,13 +10,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class SmtpEmailVerificationSender implements EmailVerificationSender {
 
-    @Value("${app.mail.from:}")
-    private String from;
+    private final String from;
 
     private final JavaMailSender javaMailSender;
 
-    public SmtpEmailVerificationSender(JavaMailSender javaMailSender) {
+    public SmtpEmailVerificationSender(JavaMailSender javaMailSender, @Value("${app.mail.from:}") String from) {
         this.javaMailSender = javaMailSender;
+        this.from = from;
     }
 
     @Override
