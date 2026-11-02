@@ -1,0 +1,59 @@
+name: 첫 배포 스택 검사
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      REDIS_TEST_HOST: localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 회원·채팅 전체 시험과 실행 JAR
+        run: bash ./gradlew test bootJar --no-daemon
+      - name: Redis 시험·두 기능·실행 JAR 확인
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET, zipfile
+          roots = [ET.parse(p).getroot() for p in glob.glob('build/test-results/test/TEST-*.xml')]
+          assert roots
+          totals = {k: sum(int(r.get(k, 0)) for r in roots) for k in ('tests', 'failures', 'errors', 'skipped')}
+          assert totals['failures'] == totals['errors'] == totals['skipped'] == 0
+          assert any(r.get('name', '').endswith('EmailProofRedisIntegrationTest') and int(r.get('tests', 0)) >= 5 for r in roots)
+          jar = next(p for p in glob.glob('build/libs/*.jar') if not p.endswith('-plain.jar'))
+          with zipfile.ZipFile(jar) as z:
+              for path in ('com/fitmeet/financechat/FinanceChatController.class',
+                           'com/fitmeet/auth/presentation/response/EmailVerificationResponse.class'):
+                  assert 'BOOT-INF/classes/' + path in z.namelist()
+          print(totals)
+          PY
+      - name: Compose 설정 검사
+        run: docker compose --env-file deploy/.env.example -f deploy/compose.yaml config --quiet
+      - name: Java 운영 이미지 빌드
+        run: docker build -f deploy/Dockerfile -t shockgraph-api:pr .
+      - name: Nginx 설정 검사
+        run: |
+          mkdir -p "$RUNNER_TEMP/shockgraph-tls"
+          openssl req -x509 -newkey rsa:2048 -nodes -subj '/CN=localhost' \
+            -keyout "$RUNNER_TEMP/shockgraph-tls/privkey.pem" \
+            -out "$RUNNER_TEMP/shockgraph-tls/fullchain.pem" -days 1 >/dev/null 2>&1
+          docker run --rm --add-host api:127.0.0.1 \
+            -v "$PWD/deploy/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "$RUNNER_TEMP/shockgraph-tls:/etc/nginx/tls:ro" \
+            nginx:1.27-alpine nginx -t
