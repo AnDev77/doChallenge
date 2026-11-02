@@ -26,6 +26,7 @@ public class ChatStompAuthInterceptor implements ChannelInterceptor {
             "^/app/chat/rooms/([1-9][0-9]*)/(enter|leave|messages|read)$");
     private static final Pattern SUBSCRIBE_DESTINATION = Pattern.compile(
             "^/topic/chat/rooms/([1-9][0-9]*)(?:/reads)?$");
+    private static final Pattern FINANCE_SUBSCRIPTION = Pattern.compile("^/topic/finance/rooms/(QQQ|SPY)$");
 
     private final TokenProvider tokenProvider;
     private final ChatService chatService;
@@ -54,12 +55,16 @@ public class ChatStompAuthInterceptor implements ChannelInterceptor {
             return message;
         }
         if (command == StompCommand.SEND || command == StompCommand.SUBSCRIBE) {
+            String destination = accessor.getDestination();
+            // Public history is REST; live subscriptions require a valid member token.
+            boolean financeSubscription = command == StompCommand.SUBSCRIBE
+                    && FINANCE_SUBSCRIPTION.matcher(destination == null ? "" : destination).matches();
             Principal user = accessor.getUser();
             if (!(user instanceof UsernamePasswordAuthenticationToken authentication)
                     || !(authentication.getPrincipal() instanceof AuthenticatedMember member)) {
                 throw new IllegalArgumentException("Chat authentication is required");
             }
-            String destination = accessor.getDestination();
+            if (financeSubscription) return message;
             Matcher matcher = (command == StompCommand.SEND
                     ? SEND_DESTINATION : SUBSCRIBE_DESTINATION).matcher(
                     destination == null ? "" : destination);
