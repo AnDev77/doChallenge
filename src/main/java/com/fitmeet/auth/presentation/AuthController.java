@@ -8,6 +8,7 @@ import com.fitmeet.auth.presentation.request.LoginRequest;
 import com.fitmeet.auth.presentation.request.SendEmailVerificationRequest;
 import com.fitmeet.auth.presentation.request.SignupRequest;
 import com.fitmeet.auth.presentation.response.LoginResponse;
+import com.fitmeet.auth.presentation.response.EmailVerificationResponse;
 import com.fitmeet.auth.presentation.response.SignupResponse;
 import com.fitmeet.common.response.ApiResponse;
 import com.fitmeet.member.application.MemberService;
@@ -45,17 +46,16 @@ public class AuthController {
     }
 
     @PostMapping("/email-verifications/confirm")
-    public ApiResponse<Void> confirmEmailVerification(@Valid @RequestBody ConfirmEmailVerificationRequest request) {
-        emailVerificationService.confirm(request.email(), request.code());
-        return ApiResponse.success(null);
+    public ApiResponse<EmailVerificationResponse> confirmEmailVerification(@Valid @RequestBody ConfirmEmailVerificationRequest request) {
+        String proof = emailVerificationService.confirm(request.email(), request.code());
+        return ApiResponse.success(new EmailVerificationResponse(proof, 600));
     }
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
-        emailVerificationService.validateVerifiedEmail(request.email());
+        emailVerificationService.consumeVerifiedEmail(request.email(), request.verificationToken());
         Member member = memberService.signupVerifiedMember(request.email(), request.password(), request.nickname());
-        emailVerificationService.consumeVerifiedEmail(member.getEmail());
         return ApiResponse.success(SignupResponse.from(member));
     }
 

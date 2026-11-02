@@ -42,3 +42,10 @@ tasks.named('test') {
 tasks.named('compileTestJava') {
     source sourceSets.main.java
 }
+
+// Never runs as part of test/check/build. Secrets are supplied only to this task.
+tasks.register('smtpDeliverySmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.fitmeet.auth.infrastructure.SmtpDeliverySmoke'
+}

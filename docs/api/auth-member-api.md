@@ -1,4 +1,6 @@
-# Auth and Member API
+# 인증·회원 API
+
+2026-10-30 갱신: 가입에 일회용 `verificationToken`이 필요하다. 운영 메일 수신·배포 연동은 별도 인수 조건이다.
 
 Base URL:
 
@@ -36,7 +38,7 @@ Error:
 ```text
 1. Send email verification code.
 2. Confirm email verification code.
-3. Signup with the verified email.
+3. Signup with the verified email and the returned verificationToken.
 4. Login with email and password.
 ```
 
@@ -78,7 +80,7 @@ Behavior:
 Redis key:
 
 ```text
-auth:email-verification:code:{email}
+auth:email-verification:v2:{sha256(email)}:code
 ```
 
 Local email inbox:
@@ -107,7 +109,7 @@ Response:
 ```json
 {
   "success": true,
-  "data": null,
+  "data": { "verificationToken": "<가입용 일회용 증표>", "expiresInSeconds": 600 },
   "error": null
 }
 ```
@@ -119,13 +121,14 @@ Behavior:
 2. Load the verification code from Redis.
 3. Compare the request code with the Redis code.
 4. Delete the code on success.
-5. Store a verified marker in Redis for 30 minutes.
+5. Store the proof hash in Redis for 10 minutes and return the raw proof once.
+6. Reject the code after 5 incorrect attempts.
 ```
 
 Redis key:
 
 ```text
-auth:email-verification:verified:{email}
+auth:email-verification:v2:{sha256(email)}:proof
 ```
 
 ## Signup
@@ -140,7 +143,8 @@ Request:
 {
   "email": "test@example.com",
   "password": "password1234",
-  "nickname": "runner"
+  "nickname": "runner",
+  "verificationToken": "<확인 응답으로 받은 43자 증표>"
 }
 ```
 
@@ -159,11 +163,11 @@ Response:
 Behavior:
 
 ```text
-1. Check the verified marker in Redis.
+1. Compare and consume the email-bound proof atomically in Redis.
 2. Encode the raw password with BCrypt.
 3. Create an ACTIVE member.
 4. Save the member in MySQL.
-5. Delete the verified marker.
+5. If the DB write fails, reverify the email; the consumed proof is not restored.
 ```
 
 The signup response intentionally returns only `memberId`.
@@ -250,6 +254,7 @@ Response:
     "id": 1,
     "email": "test@example.com",
     "nickname": "runner",
+  "verificationToken": "<확인 응답으로 받은 43자 증표>",
     "role": "USER",
     "status": "ACTIVE"
   },
@@ -320,3 +325,9 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body (@{ email = $email; password = $password } | ConvertTo-Json)
 ```
+
+## 재시도·오류·개발 환경
+
+이메일별 발송은 60초당 1회·1시간당 5회다. IP별 10분 제한은 발송/가입 10회, 코드 확인 60회, 로그인 30회다. 제한 응답은 429와 Retry-After를 제공한다. 새 발송은 이전 증표를 무효화한다. SMTP·Redis·DB 오류는 503이며 가입 저장 실패 때 재인증이 필요할 수 있다. 비밀번호·증표·코드를 로그나 URL에 넣지 않는다.
+
+`local`과 `integration` 프로필은 Mailpit에만 사용할 로컬 발신 주소와 TLS/SMTP 인증 비활성 설정이다. 운영에서는 이 프로필을 사용하지 않고 MAIL_HOST/PORT/USERNAME/PASSWORD/FROM과 정확한 CORS Origin을 설정한다. 운영 기본은 STARTTLS 필수이며 연결·읽기·쓰기 timeout은 각각 5초다.
