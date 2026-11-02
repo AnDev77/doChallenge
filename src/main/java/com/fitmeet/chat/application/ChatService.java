@@ -149,4 +149,9 @@ public class ChatService {
         }
         return room;
     }
+
+    @Transactional(readOnly = true)
+    public void requireRoomAccess(Long roomId, Long memberId) {
+        getAccessibleRoom(roomId, memberId);
+    }
 }

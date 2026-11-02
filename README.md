@@ -13,6 +13,8 @@ Spring Boot backend for a local exercise meetup and challenge service.
 - Login with BCrypt password matching
 - JWT access token issuing
 - JWT authentication filter for protected REST and SSE APIs
+- JWT-authenticated STOMP chat: send `Authorization: Bearer <accessToken>` in the CONNECT headers; message payloads do not accept `memberId`
+- Configure `app.websocket.allowed-origin-patterns` for the deployed web origin (local default: `http://localhost:*`)
 
 ## Docs
 
