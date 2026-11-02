@@ -41,3 +41,7 @@ gh workflow run email-signup-quality.yml --repo AnDev77/doChallenge --ref feat/e
 ## 객관적 종료 판정 기준
 
 설정 검증과 실패 시 비공개 처리, 전용 실행 경로가 이번 증가분이다. 실제 수신, 회원가입 전체 흐름, 운영 DB/Redis/CORS 연결, 공개 회원 서비스 배포는 별도 인수 조건이다. SMTP 서버 접수만으로 수신 완료나 이메일 인증 기능 배포 완료를 주장하지 않는다. 새로운 SMTP 시험 도구가 연구 모델의 예측 성능이나 제품 수요를 입증하지도 않는다.
+
+## 완료 근거
+
+코드 `62725f0`의 [원격 Java 21 검사](https://github.com/AnDev77/doChallenge/actions/runs/41366725135)에서 전체 54개 시험이 실패 0·오류 0·생략 0으로 완료됐다. 기존 47개에 SMTP 안전성/메시지 구성 7개가 추가됐다. 실제 Redis 통합 시험과 bootJar 빌드, 가입 응답 클래스 포함 및 SMTP 시험 실행기 제외 검사도 성공했다. `smtp-smoke` job은 pull_request 실행이므로 의도대로 skipped였으며 실메일 검증 성공으로 계산하지 않는다. 로컬 Java 시험은 환경 제약으로 미실행, 실제 SMTP·수신함·운영 배포는 미확인 상태다. 최종 문서 반영 커밋의 원격 게이트는 PR 본문에서 별도로 추적한다.
