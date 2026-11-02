@@ -45,3 +45,7 @@ gh workflow run email-signup-quality.yml --repo AnDev77/doChallenge --ref feat/e
 ## 완료 근거
 
 코드 `62725f0`의 [원격 Java 21 검사](https://github.com/AnDev77/doChallenge/actions/runs/41366725135)에서 전체 54개 시험이 실패 0·오류 0·생략 0으로 완료됐다. 기존 47개에 SMTP 안전성/메시지 구성 7개가 추가됐다. 실제 Redis 통합 시험과 bootJar 빌드, 가입 응답 클래스 포함 및 SMTP 시험 실행기 제외 검사도 성공했다. `smtp-smoke` job은 pull_request 실행이므로 의도대로 skipped였으며 실메일 검증 성공으로 계산하지 않는다. 로컬 Java 시험은 환경 제약으로 미실행, 실제 SMTP·수신함·운영 배포는 미확인 상태다. 최종 문서 반영 커밋의 원격 게이트는 PR 본문에서 별도로 추적한다.
+
+## 첫 수동 실행과 설정 진단
+
+2026-11-02 [첫 수동 실행](https://github.com/AnDev77/doChallenge/actions/runs/41378317795)은 전체 시험과 JAR 검사가 성공했지만, 발송 단계가 `CONFIGURATION_REJECTED`로 실패했다. 실제 Gmail SMTP 접속 전 중단이므로 이 실행으로 메일이 발송됐다고 기록할 수 없다. CLI의 실행 접수 메시지는 메일 수신 증거가 아니다. 원인 파악을 위해 진단 출력을 추가했다. `CHECK_MAIL_HOST`처럼 실패한 설정의 **이름만** 표시하며 주소·비밀번호 값은 출력하지 않는다. 새 검사가 성공한 뒤에야 정확한 항목을 알 수 있으므로 이 시점에는 어떤 Secret이 잘못됐다고 단정하지 않는다. 검사를 마친 뒤 사용자가 지정한 수신처에서 별도로 도착을 확인한다.

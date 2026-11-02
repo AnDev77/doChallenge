@@ -15,6 +15,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class SmtpDeliverySmokeTest {
+    @Test void diagnosticPrintsOnlyKnownSettingNames() {
+        for (String key : valid().keySet()) {
+            var env = valid();
+            env.remove(key);
+            String result = SmtpDeliverySmoke.diagnostic(env);
+            assertThat(result).isEqualTo("CHECK_" + key);
+            assertThat(result).doesNotContain("@", "synthetic-not-a-secret");
+        }
+    }
+
     @Test void productionSenderAddressesOneMailboxWithoutCcOrBcc() {
         var mail = mock(JavaMailSender.class);
         var sender = new SmtpEmailVerificationSender(mail, "sender@example.invalid");
