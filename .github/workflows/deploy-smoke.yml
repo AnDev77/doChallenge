@@ -14,35 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 격리된 시험 설정 생성
-        run: |
-          mkdir -p deploy/.smoke-tls
-          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-            -keyout deploy/.smoke-tls/key.pem -out deploy/.smoke-tls/cert.pem \
-            -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost' >/dev/null 2>&1
-          python3 - <<'PY'
-          import secrets
-          from pathlib import Path
-          root = Path.cwd()
-          values = {
-              'DB_NAME': 'doChallenge',
-              'DB_USER': 'shockgraph',
-              'DB_PASSWORD': secrets.token_urlsafe(32),
-              'MYSQL_ROOT_PASSWORD': secrets.token_urlsafe(32),
-              'JWT_SECRET': secrets.token_urlsafe(48),
-              'MAIL_HOST': 'mailpit',
-              'MAIL_PORT': '1025',
-              'MAIL_USERNAME': 'smoke',
-              'MAIL_PASSWORD': 'unused',
-              'MAIL_FROM': 'smoke@example.invalid',
-              'WEB_ORIGIN': 'https://shockgraph-web.vercel.app',
-              'TLS_CERT_PATH': str(root / 'deploy/.smoke-tls/cert.pem'),
-              'TLS_KEY_PATH': str(root / 'deploy/.smoke-tls/key.pem'),
-          }
-          (root / 'deploy/.smoke.env').write_text(
-              ''.join(f'{key}={value}\n' for key, value in values.items())
-          )
-          PY
-          chmod 600 deploy/.smoke.env deploy/.smoke-tls/key.pem
+        run: python3 deploy/prepare_smoke.py
       - name: Compose 계약 검사
         run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml config --quiet
       - name: MySQL Redis Java Nginx 시험 기동
