@@ -1,0 +1,57 @@
+name: 배포 구성 인수 시험
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: 격리된 시험 설정 생성
+        run: |
+          mkdir -p deploy/.smoke-tls
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout deploy/.smoke-tls/key.pem -out deploy/.smoke-tls/cert.pem \
+            -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost' >/dev/null 2>&1
+          python3 - <<'PY'
+          import secrets
+          from pathlib import Path
+          root = Path.cwd()
+          values = {
+              'DB_NAME': 'doChallenge',
+              'DB_USER': 'shockgraph',
+              'DB_PASSWORD': secrets.token_urlsafe(32),
+              'MYSQL_ROOT_PASSWORD': secrets.token_urlsafe(32),
+              'JWT_SECRET': secrets.token_urlsafe(48),
+              'MAIL_HOST': 'mailpit',
+              'MAIL_PORT': '1025',
+              'MAIL_USERNAME': 'smoke',
+              'MAIL_PASSWORD': 'unused',
+              'MAIL_FROM': 'smoke@example.invalid',
+              'WEB_ORIGIN': 'https://shockgraph-web.vercel.app',
+              'TLS_CERT_PATH': str(root / 'deploy/.smoke-tls/cert.pem'),
+              'TLS_KEY_PATH': str(root / 'deploy/.smoke-tls/key.pem'),
+          }
+          (root / 'deploy/.smoke.env').write_text(
+              ''.join(f'{key}={value}\n' for key, value in values.items())
+          )
+          PY
+          chmod 600 deploy/.smoke.env deploy/.smoke-tls/key.pem
+      - name: Compose 계약 검사
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml config --quiet
+      - name: MySQL Redis Java Nginx 시험 기동
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml up -d --build --wait --wait-timeout 360
+      - name: 이메일 인증 가입 로그인 종목방 재접속
+        run: python3 deploy/smoke_test.py
+      - name: 컨테이너 상태 요약
+        if: failure()
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml ps
+      - name: 시험 자원 삭제
+        if: always()
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml down -v --remove-orphans

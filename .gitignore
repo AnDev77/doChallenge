@@ -10,6 +10,9 @@ out/
 .env.*
 !.env.example
 *.log
+__pycache__/
+deploy/.smoke.env
+deploy/.smoke-tls/
 
 ### OS ###
 .DS_Store
