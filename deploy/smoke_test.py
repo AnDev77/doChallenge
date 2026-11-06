@@ -43,15 +43,16 @@ def require(status: int, expected: int, label: str) -> None:
         raise AssertionError(f"{label}: HTTP {status}, expected {expected}")
 
 
-def verification_code(email: str) -> str:
+def verification_code() -> str:
+    # This disposable mailbox receives exactly one synthetic message in the job.
+    # Mailpit documents /view/latest.txt for UI integration tests.
     for _ in range(30):
         try:
-            with urllib.request.urlopen(MAILPIT + "/api/v1/message/latest", timeout=5) as response:
-                message = json.load(response)
-            if any(to.get("Address") == email for to in message.get("To", [])):
-                match = re.search(r"\b\d{6}\b", message.get("Text", ""))
-                if match:
-                    return match.group()
+            with urllib.request.urlopen(MAILPIT + "/view/latest.txt", timeout=5) as response:
+                body = response.read().decode()
+            match = re.search(r"\b\d{6}\b", body)
+            if match:
+                return match.group()
         except urllib.error.HTTPError as error:
             if error.code != 404:
                 raise
@@ -138,7 +139,7 @@ def main() -> None:
     status, _ = request("/api/v1/auth/email-verifications/send", method="POST",
                         payload={"email": email})
     require(status, 200, "send verification")
-    code = verification_code(email)
+    code = verification_code()
     status, confirmed = request("/api/v1/auth/email-verifications/confirm", method="POST",
                                 payload={"email": email, "code": code})
     require(status, 200, "confirm verification")
