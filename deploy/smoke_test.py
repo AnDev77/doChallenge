@@ -46,18 +46,29 @@ def require(status: int, expected: int, label: str) -> None:
 def verification_code() -> str:
     # This disposable mailbox receives exactly one synthetic message in the job.
     # Mailpit documents /view/latest.txt for UI integration tests.
+    last_status = "unavailable"
+    body_length = 0
+    has_marker = False
+    digit_count = 0
     for _ in range(30):
         try:
             with urllib.request.urlopen(MAILPIT + "/view/latest.txt", timeout=5) as response:
                 body = response.read().decode()
+            last_status = "ok"
+            body_length = len(body)
+            has_marker = "ShockGraph" in body
+            digit_count = sum(char.isdigit() for char in body)
             match = re.search(r"\b\d{6}\b", body)
             if match:
                 return match.group()
         except urllib.error.HTTPError as error:
             if error.code != 404:
                 raise
+            last_status = "not-found"
         time.sleep(1)
-    raise AssertionError("synthetic verification mail not received by Mailpit")
+    raise AssertionError("synthetic mail code unavailable: "
+                         f"mailpit={last_status}, body_length={body_length}, "
+                         f"marker={has_marker}, digit_count={digit_count}")
 
 
 class StompSocket:
