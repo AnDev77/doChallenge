@@ -1,0 +1,29 @@
+name: 배포 구성 인수 시험
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: 격리된 시험 설정 생성
+        run: python3 deploy/prepare_smoke.py
+      - name: Compose 계약 검사
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml config --quiet
+      - name: MySQL Redis Java Nginx 시험 기동
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml up -d --build --wait --wait-timeout 360
+      - name: 이메일 인증 가입 로그인 종목방 재접속
+        run: python3 deploy/smoke_test.py
+      - name: 컨테이너 상태 요약
+        if: failure()
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml ps
+      - name: 시험 자원 삭제
+        if: always()
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml down -v --remove-orphans

@@ -2,6 +2,20 @@
 
 2026-11-02 기준. 웹은 기존 Vercel 주소를 유지한다. 이 스택은 **Java + MySQL + Redis + Nginx**만 실행한다. ShockGraph AI의 PostgreSQL은 연구 저장소이며 이 회원 DB와 섞지 않는다. Python의 미검증 예측이나 비공개 R2 가격은 이 배포에 포함하지 않는다.
 
+## 배포 전 격리 인수 시험
+
+`.github/workflows/deploy-smoke.yml`은 GitHub Actions의 일회용 Docker 환경에서 `compose.yaml`과 시험 전용 `compose.smoke.yaml`을 함께 실행한다. 무작위 시험 비밀번호와 1일짜리 자체 서명 인증서를 생성하고, 외부 수신자 대신 내부 Mailpit SMTP를 사용한다. `deploy/smoke_test.py`는 Nginx HTTPS를 통해 인증 메일 수신→코드 확인→일회용 증표 가입→로그인→미인증 쓰기 거부→QQQ/STOMP 실시간 수신→중복 요청 방지→연결 종료 후 `afterId` 복구→SPY 분리를 확인한다. 이어서 이름 있는 MySQL 볼륨은 보존한 채 컨테이너를 재생성하고 기존 회원의 재로그인·대화 기록 재조회를 확인한다. 코드·증표·JWT·메일 본문은 시험 로그에 출력하지 않는다.
+
+이 시험의 성공은 **격리된 합성 회원·메일·메시지의 서비스 연결과 동일 Docker 호스트의 볼륨 유지**에 한정된다. 실제 SMTP 수신함, Vercel 화면의 두 브라우저, 운영 도메인/TLS, 서버 디스크 손상 뒤의 백업 복구는 별도 인수 시험이 필요하다. 로컬 Docker가 설치된 개발자는 다음과 같이 재현할 수 있다. 80/443 포트가 비어 있어야 한다. `down -v`는 **이 격리 시험의 MySQL 볼륨을 삭제**하므로 실제 운영 데이터에 사용하지 않는다. 시험 오버레이와 자체 서명 인증서는 운영 환경에 사용하지 않는다.
+
+```bash
+python3 deploy/prepare_smoke.py
+docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml config --quiet
+docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml up -d --build --wait --wait-timeout 360
+python3 deploy/smoke_test.py
+docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml down -v --remove-orphans
+```
+
 ## 데이터와 외부 경계
 
 | 구성 | 역할 | 지속성/접근 |
