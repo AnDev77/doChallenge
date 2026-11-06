@@ -58,7 +58,7 @@ def verification_code() -> str:
             body_length = len(body)
             has_marker = "ShockGraph" in body
             digit_count = sum(char.isdigit() for char in body)
-            match = re.search(r"\b\d{6}\b", body)
+            match = re.search(r"(?<![0-9])[0-9]{6}(?![0-9])", body)
             if match:
                 return match.group()
         except urllib.error.HTTPError as error:
