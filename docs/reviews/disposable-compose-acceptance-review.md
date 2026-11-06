@@ -13,7 +13,7 @@
 
 ## 완료 근거와 작업량
 
-- 시험 오버레이 1개, 설정 생성기 1개, 스모크 실행기 1개, CI 워크플로 1개, 시험용 메일 설정 1개, 비밀 파일 제외 규칙/배포 문서/이 리뷰를 작성·수정했다. [원격 Docker 인수 시험 42155187821](https://github.com/AnDev77/doChallenge/actions/runs/42155187821)은 Compose 설정·컨테이너 기동·이메일/가입/채팅/재접속·자원 삭제 단계가 모두 성공했다. 설정 생성기를 공통화한 최종 커밋의 게이트는 별도 확인한다.
+- 시험 오버레이 1개, 설정 생성기 1개, 스모크 실행기 1개, CI 워크플로 1개, 시험용 메일 설정 1개, 비밀 파일 제외 규칙/배포 문서/이 리뷰를 작성·수정했다. [공통 설정 생성기를 포함한 Docker 인수 시험 42155523005](https://github.com/AnDev77/doChallenge/actions/runs/42155523005)은 Compose 설정·컨테이너 기동·이메일/가입/채팅/재접속·자원 삭제 단계가 모두 성공했다. 같은 커밋의 [이메일](https://github.com/AnDev77/doChallenge/actions/runs/42155522941), [채팅](https://github.com/AnDev77/doChallenge/actions/runs/42155523024), [운영 이미지](https://github.com/AnDev77/doChallenge/actions/runs/42155523058) 품질 게이트도 성공했다.
 
 ## 판정의 경계
 
