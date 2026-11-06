@@ -9,10 +9,12 @@ import os
 import re
 import socket
 import ssl
+import subprocess
 import time
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
 
 BASE = "https://localhost"
 MAILPIT = "http://127.0.0.1:8025"
@@ -208,7 +210,24 @@ def main() -> None:
             raise AssertionError("QQQ messages leaked into SPY")
     finally:
         reconnected.close()
-    print("PASS: TLS proxy, synthetic SMTP, signup, login, REST and STOMP chat, reconnect")
+
+    # Recreate every container while preserving Compose's named MySQL volume.
+    # This exercises the same recovery path a single-host restart uses.
+    root = Path(__file__).resolve().parent.parent
+    compose = ["docker", "compose", "--env-file", "deploy/.smoke.env",
+               "-f", "deploy/compose.yaml", "-f", "deploy/compose.smoke.yaml"]
+    subprocess.run(compose + ["down", "--remove-orphans"], cwd=root, check=True)
+    subprocess.run(compose + ["up", "-d", "--wait", "--wait-timeout", "360"],
+                   cwd=root, check=True)
+    status, _ = request("/api/v1/auth/login", method="POST",
+                        payload={"email": email, "password": password})
+    require(status, 200, "login after Compose recreation")
+    status, recovered = request(path + f"?afterId={first_id}")
+    require(status, 200, "chat history after Compose recreation")
+    if [row["id"] for row in recovered["data"]] != [second_id]:
+        raise AssertionError("MySQL chat history did not survive Compose recreation")
+    print("PASS: TLS proxy, synthetic SMTP, signup, login, REST and STOMP chat, "
+          "reconnect, MySQL volume persistence")
 
 
 if __name__ == "__main__":
