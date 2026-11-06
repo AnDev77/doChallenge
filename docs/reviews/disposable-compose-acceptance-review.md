@@ -9,7 +9,7 @@
 
 - 시험 전용 Compose 오버레이에 Mailpit을 추가했다. Java는 `prod,smoke` 프로필로 실제 MySQL·Redis에 연결하며 SMTP 인증/TLS만 격리 SMTP에 맞게 끈다. Nginx에는 일회용 자체 서명 인증서를 제공한다.
 - 스모크 스크립트는 Nginx의 HTTPS 경로에서 메일 발송·수신, 코드 확인, 일회용 증표로 가입, 로그인, 미인증 쓰기 거부, 인증된 WebSocket/STOMP 구독과 실시간 수신, 중복 요청, 연결 종료 후 `afterId` 복구, QQQ/SPY 분리를 검사한다. 합성 메일 주소와 내용만 사용하며 코드·증표·JWT 본문은 출력하지 않는다.
-- `python3 -m py_compile`, YAML 파싱, `git diff --check`는 구문·형식만 확인한다. 컨테이너 기동과 전체 흐름은 원격 Actions 게이트에서 따로 판정한다.
+- `python3 -m py_compile`, YAML 파싱, `git diff --check`는 구문·형식만 확인한다. 첫 원격 Actions 실행에서 Compose 계약과 5개 컨테이너 기동은 성공했다. 스모크는 메일 확인 단계에서 실패했다. Mailpit 공식 API의 수신자 필드가 `To[].Address`인데 시험 코드가 `To[].Email`을 읽은 것이 원인이며 수정 후 재실행한다. 이 실패를 메일 발송 성공이나 전체 흐름 성공으로 기록하지 않는다.
 
 ## 완료 근거와 작업량
 

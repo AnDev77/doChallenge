@@ -48,7 +48,7 @@ def verification_code(email: str) -> str:
         try:
             with urllib.request.urlopen(MAILPIT + "/api/v1/message/latest", timeout=5) as response:
                 message = json.load(response)
-            if any(to.get("Email") == email for to in message.get("To", [])):
+            if any(to.get("Address") == email for to in message.get("To", [])):
                 match = re.search(r"\b\d{6}\b", message.get("Text", ""))
                 if match:
                     return match.group()
