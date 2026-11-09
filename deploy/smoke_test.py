@@ -146,7 +146,21 @@ class StompSocket:
         self.socket.close()
 
 
+def migrated_schema_version() -> str:
+    root = Path(__file__).resolve().parent.parent
+    compose = ["docker", "compose", "--env-file", "deploy/.smoke.env",
+               "-f", "deploy/compose.yaml", "-f", "deploy/compose.smoke.yaml"]
+    query = ("MYSQL_PWD=\"$MYSQL_ROOT_PASSWORD\" mysql -N -s -uroot \"$MYSQL_DATABASE\" "
+             "-e 'SELECT version FROM flyway_schema_history "
+             "WHERE success=1 ORDER BY installed_rank DESC LIMIT 1'")
+    result = subprocess.run(compose + ["exec", "-T", "mysql", "sh", "-c", query],
+                            cwd=root, check=True, capture_output=True, text=True)
+    return result.stdout.strip()
+
+
 def main() -> None:
+    if migrated_schema_version() != "1":
+        raise AssertionError("initial MySQL migration not recorded")
     email = f"smoke-{uuid.uuid4().hex}@example.invalid"
     password = uuid.uuid4().hex
     status, _ = request("/api/v1/auth/email-verifications/send", method="POST",
@@ -219,6 +233,8 @@ def main() -> None:
     subprocess.run(compose + ["down", "--remove-orphans"], cwd=root, check=True)
     subprocess.run(compose + ["up", "-d", "--wait", "--wait-timeout", "360"],
                    cwd=root, check=True)
+    if migrated_schema_version() != "1":
+        raise AssertionError("MySQL migration history changed after recreation")
     status, _ = request("/api/v1/auth/login", method="POST",
                         payload={"email": email, "password": password})
     require(status, 200, "login after Compose recreation")

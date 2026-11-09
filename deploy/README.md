@@ -1,6 +1,10 @@
 # 첫 공개 배포: Java 회원·QQQ/SPY 채팅
 
-2026-11-02 기준. 웹은 기존 Vercel 주소를 유지한다. 이 스택은 **Java + MySQL + Redis + Nginx**만 실행한다. ShockGraph AI의 PostgreSQL은 연구 저장소이며 이 회원 DB와 섞지 않는다. Python의 미검증 예측이나 비공개 R2 가격은 이 배포에 포함하지 않는다.
+2026-11-09 기준 운영 호스트는 **AWS EC2**로 한정한다. 웹은 기존 Vercel 주소를 유지한다. 이 스택은 **Java + MySQL + Redis + Nginx**만 실행한다. ShockGraph AI의 PostgreSQL은 연구 저장소이며 이 회원 DB와 섞지 않는다. Python의 미검증 예측이나 비공개 R2 가격은 이 배포에 포함하지 않는다. EC2 권한·도메인/TLS·SMTP·비밀 설정과 승인된 main/CI를 확인하기 전에는 실제 배포를 진행하지 않는다.
+
+## 버전 관리 MySQL 초기 스키마
+
+새 빈 DB에서는 Flyway `V1__initial_schema.sql`이 회원·기존 모임·QQQ/SPY 채팅 테이블을 만들고, Hibernate는 구조를 검증만 한다. 격리 인수 시험은 마이그레이션 이력이 `1`인 상태에서 가입·대화를 저장한 뒤 컨테이너를 재생성하고 같은 이력과 데이터를 다시 확인한다. 기존 `ddl-auto: update` DB에는 자동 baseline을 하지 않는다. **기존 운영 DB가 있다면 이 버전은 기동을 거절하는 것이 정상**이다. 백업과 실제 테이블·인덱스 비교, 별도 복제 DB의 baseline 및 구·신 버전 동시 연결 검증 후에만 그 DB의 전환을 검토한다. 이 저장소 검사는 실제 DB의 호환성을 승인하지 않는다.
 
 ## 배포 전 격리 인수 시험
 
@@ -41,14 +45,14 @@ MySQL·Redis·Java 포트는 인터넷에 열지 않는다. 공개 HTTPS는 Ngin
 ## 내일 배포 확인 순서
 
 1. 병합 순서: doChallenge PR #6 → #8 → #7 → 이 통합/배포 PR의 충돌·전체 CI 재확인. 웹 PR #1은 동일 API 계약과 원격 CI를 확인한 뒤 반영한다. 배포 직전 main 최신 커밋을 다시 확인한다.
-2. 서버의 영속 디스크와 MySQL 볼륨, 서버 비밀값, HTTPS 주소, 정확한 Origin을 확인한다. 기존 DB가 있으면 먼저 덤프를 만든다. `ddl-auto: update`는 첫 단일 인스턴스 배포에 한정하고 다음 배포 전 버전 관리 SQL 마이그레이션으로 바꾼다.
+2. EC2의 영속 디스크와 MySQL 볼륨, 서버 비밀값, HTTPS 주소, 정확한 Origin을 확인한다. 기존 DB가 있으면 먼저 백업과 구조 비교를 수행한다. 새 빈 DB에는 Flyway 초기 스키마를 적용하고 기존 DB에는 자동 baseline을 하지 않는다.
 3. `/actuator/health`는 컨테이너 내부에서 DB·Redis 연결을 확인한다. 외부에서는 HTTPS의 `/api/v1/finance/rooms/QQQ/messages` 공개 읽기와 미인증 POST 거부를 검사한다. HTTP의 308 이동이나 `/healthz` 단독 응답은 회원 서비스 성공이 아니다.
 4. 지정 수신함에서 메일 발송→수신→확인→가입→로그인, 로그인 회원의 QQQ·SPY 작성, 다른 브라우저 조회와 재접속 후 누락 복구를 실제로 확인한다. 실제 수신과 두 브라우저 시험 전에는 회원·채팅 기능을 운영 성공으로 표시하지 않는다.
 5. 장애 시 새 앱을 내리고 이전 앱 이미지로 되돌린다. **데이터 볼륨을 지우지 않는다.** DB 구조가 이미 바뀌었으면 앱만 되돌리는 것이 안전하다고 가정하지 않고 백업·스키마 호환성을 먼저 확인한다.
 
 공개 API 주소와 유효한 TLS 인증서가 정해져야 실제 공개가 가능하다. 컨테이너를 띄운 것과 사용자가 HTTPS에서 회원·대화를 이용하는 것은 별도 판정이다.
 
-## Oracle Always Free VM 경로
+## 과거 검토: Oracle Always Free VM 경로 (현재 운영 대상 아님)
 
 사용자가 2026-11-02 선택한 첫 호스트 후보는 OCI Always Free의 Ampere A1이다. [Oracle의 현재 한도](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)는 홈 리전에서 합계 2 OCPU·12GB RAM에 해당한다. 첫 단일 VM은 `VM.Standard.A1.Flex`, 2 OCPU·12GB, Ubuntu Arm64, 기본 47GB 이상 부팅 볼륨, 공인 IPv4와 SSH 키를 사용한다. Oracle의 용량 부족 오류가 나면 무료 VM을 즉시 만들 수 없으며 배포 성공을 보장하지 않는다. Docker 공식 MySQL 8.4 이미지는 Arm64도 제공한다.
 
@@ -68,7 +72,7 @@ IP 인증서 자동 갱신은 Certbot 타이머와 갱신 성공 시 Nginx **컨
 
 ## Blue/Green 확장 경로
 
-현재는 **운영 전환 HOLD**다. `src/main/resources/application-prod.yml`의 `ddl-auto: update`와 버전 관리 SQL 마이그레이션 부재 때문에 두 앱 버전이 하나의 MySQL을 공유하는 동안 스키마가 안전하게 유지된다고 보장할 수 없다. `python3 deploy/bluegreen_readiness.py`는 이 저장소의 근거를 출력하며, 실제 배포 절차는 `--enforce`가 성공하지 않으면 진행하면 안 된다. 이 검사만 통과해도 실제 DB의 마이그레이션 이력, 구·신 앱의 동시 호환, WebSocket 연결 유지, 전환·되돌리기 시험은 별도로 필요하다.
+현재는 **운영 전환 HOLD**다. `python3 deploy/bluegreen_readiness.py --enforce`는 버전 관리 스키마와 `ddl-auto: validate`의 소스 조건만 검사한다. 실제 기존 DB의 마이그레이션 이력과 구·신 앱 동시 호환, 두 색상 기동, WebSocket 연결 유지, 전환·되돌리기 시험은 아직 필요하다. 운영 전환은 EC2에서 그 조건을 검증한 뒤에만 고려한다.
 
 첫 배포는 단일 Java 컨테이너로 외부 연결과 데이터 보존을 검증한다. 다음 단계에서 `api-blue`와 `api-green`을 서로 다른 **버전 태그의 이미지**로 실행하고, 두 컨테이너가 같은 MySQL·Redis에 연결되게 한다. Nginx는 검증된 한 색상으로만 신규 트래픽을 보내며, 대기 색상은 DB/Redis health와 인증·읽기·쓰기 합성 스모크를 통과한 뒤 전환한다. 전환 뒤 오류가 나면 Nginx를 이전 색상으로 되돌리고 대기 인스턴스를 유지한다.
 
