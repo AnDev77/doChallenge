@@ -10,4 +10,8 @@
 
 ## 완료 판정과 한계
 
-로컬 Python 게이트 시험 6개·구문·diff 검사에 성공하고 저장소의 `SCHEMA_SOURCE_READY`를 확인했다. Java 21은 설치돼 있으나 Gradle 배포 파일 다운로드가 이 환경의 네트워크에서 차단돼 로컬 전체 시험과 실행 JAR 빌드는 시작하지 못했다. 원격 Docker 인수와 PR 게이트 결과는 실행 뒤 기록한다. 이 변경은 **새 빈 DB의 구조를 통제하는 기능**이다. 기존 운영 DB는 자동 baseline 없이 기동을 거부하며, 백업·실제 DDL 비교·복제 DB의 baseline 검증이 별도로 필요하다. 두 버전의 동시 기동·Nginx 트래픽 전환·되돌리기와 WebSocket 드레인도 아직 구현되지 않았다. 따라서 EC2 운영 Blue/Green과 실제 회원 서비스 배포는 HOLD다. 합성 Docker 가입·채팅 시험은 실 SMTP 수신과 운영 사용자 수요를 입증하지 않는다. 금융 예측의 독립 미래 성능도 HOLD다.
+로컬 Python 게이트 시험 6개·구문·diff 검사에 성공하고 저장소의 `SCHEMA_SOURCE_READY`를 확인했다. Java 21은 설치돼 있으나 Gradle 배포 파일 다운로드가 이 환경의 네트워크에서 차단돼 로컬 전체 시험과 실행 JAR 빌드는 시작하지 못했다. [초안 PR #12의 스키마 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42577066976), [전체 Java 시험·JAR·이미지](https://github.com/AnDev77/doChallenge/actions/runs/42577067000), [이메일](https://github.com/AnDev77/doChallenge/actions/runs/42577067010), [채팅](https://github.com/AnDev77/doChallenge/actions/runs/42577066973), [격리 Docker 인수 시험](https://github.com/AnDev77/doChallenge/actions/runs/42577066965)이 모두 성공했다. Docker 시험은 새 DB의 Flyway 이력과 합성 회원·QQQ/SPY 대화를 확인하고, 컨테이너 재생성 뒤 같은 이력·회원·메시지 복구를 확인한다.
+
+이 변경은 **새 빈 DB의 구조를 통제하는 기능**이다. 기존 운영 DB는 자동 baseline 없이 기동을 거부하며, 백업·실제 DDL 비교·복제 DB의 baseline 검증이 별도로 필요하다. 두 버전의 동시 기동·Nginx 트래픽 전환·되돌리기와 WebSocket 드레인도 아직 구현되지 않았다. 따라서 EC2 운영 Blue/Green과 실제 회원 서비스 배포는 HOLD다. 합성 Docker 가입·채팅 시험은 실 SMTP 수신과 운영 사용자 수요를 입증하지 않는다. 금융 예측의 독립 미래 성능도 HOLD다.
+
+연구 파이프라인은 별개로 확인했다. Python `main`의 [최근 표시된 R2 예약 실행](https://github.com/AnDev77/ShockGarph_AI/actions/runs/42278466729)은 2026-11-06에 실제 실행돼 단계 성공으로 표시되지만, 감사의 고유 사전 예측 거래일은 1개로 이전과 동일하다. 예약 등록과 실행 성공을 새 독립 미래 표본 또는 모델 성능으로 계산하지 않는다.
