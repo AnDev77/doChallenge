@@ -68,6 +68,8 @@ IP 인증서 자동 갱신은 Certbot 타이머와 갱신 성공 시 Nginx **컨
 
 ## Blue/Green 확장 경로
 
+현재는 **운영 전환 HOLD**다. `src/main/resources/application-prod.yml`의 `ddl-auto: update`와 버전 관리 SQL 마이그레이션 부재 때문에 두 앱 버전이 하나의 MySQL을 공유하는 동안 스키마가 안전하게 유지된다고 보장할 수 없다. `python3 deploy/bluegreen_readiness.py`는 이 저장소의 근거를 출력하며, 실제 배포 절차는 `--enforce`가 성공하지 않으면 진행하면 안 된다. 이 검사만 통과해도 실제 DB의 마이그레이션 이력, 구·신 앱의 동시 호환, WebSocket 연결 유지, 전환·되돌리기 시험은 별도로 필요하다.
+
 첫 배포는 단일 Java 컨테이너로 외부 연결과 데이터 보존을 검증한다. 다음 단계에서 `api-blue`와 `api-green`을 서로 다른 **버전 태그의 이미지**로 실행하고, 두 컨테이너가 같은 MySQL·Redis에 연결되게 한다. Nginx는 검증된 한 색상으로만 신규 트래픽을 보내며, 대기 색상은 DB/Redis health와 인증·읽기·쓰기 합성 스모크를 통과한 뒤 전환한다. 전환 뒤 오류가 나면 Nginx를 이전 색상으로 되돌리고 대기 인스턴스를 유지한다.
 
 두 색상이 같은 DB를 읽는 동안 `ddl-auto: update`로 스키마를 임의 변경하면 안전한 되돌리기를 보장할 수 없다. Blue/Green 전에는 버전 관리 마이그레이션과 **구버전·신버전 동시 호환**을 먼저 구현한다. 이메일 인증 증표와 채팅 원본은 색상별로 나누지 않는다. 단일 VM Blue/Green은 VM 장애까지 막지 못하며, 실제 무중단 여부는 연결 중인 WebSocket과 진행 중 요청의 전환 시험으로 판정한다. Jenkins는 이 순서를 자동화할 수 있으나 첫 배포 필수는 아니다.
