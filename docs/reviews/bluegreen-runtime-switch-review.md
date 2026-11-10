@@ -10,6 +10,8 @@
 
 ## 작업량·오류·검증 범위
 
-새 운영 Compose·Nginx 설정·전환 명령·시험 전용 오버레이·원격 워크플로·Python 단위 시험·스모크 실행 파일과 이 리뷰를 추가했다. 기존 합성 인수 스모크는 대기 포트와 색상 간 원본 재조회를 지원하도록 확장했다. 로컬 Python 단위 시험 4개와 구문·diff 검사는 통과했다. 최초 로컬 `./gradlew`는 실행 권한 부재로 시작하지 못해 `bash ./gradlew`로 재시도했으나 Gradle 배포 파일 다운로드가 이 환경의 네트워크 제한으로 실패했다. 로컬 Java 시험·JAR·Docker 인수 시험은 미실행이며 원격 게이트를 별도로 확인한다.
+새 운영 Compose·Nginx 설정·전환 명령·시험 전용 오버레이·원격 워크플로·Python 단위 시험·스모크 실행 파일과 이 리뷰를 추가했다. 기존 합성 인수 스모크는 대기 포트와 색상 간 원본 재조회를 지원하도록 확장했다. 로컬 Python 단위 시험 4개와 구문·diff 검사는 통과했다. 최초 로컬 `./gradlew`는 실행 권한 부재로 시작하지 못해 `bash ./gradlew`로 재시도했으나 Gradle 배포 파일 다운로드가 이 환경의 네트워크 제한으로 실패했다. 로컬 Java 시험·JAR·Docker 인수 시험은 미실행이다.
+
+첫 원격 커밋 `820f7ec`의 [Blue/Green 인수 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42772835763)는 Java 전체 시험·실행 JAR, Python 전환 시험, 이미지 빌드, 공유 MySQL·Redis와 두 API 기동, 대기 경로 스모크, Nginx 전환 및 역방향 복귀를 모두 성공으로 기록했다. [기존 배포 인수 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42772835671)는 단일 스택의 가입·채팅·재기동·원본 유지에 성공했다. [운영 이미지/구성 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42772835808)는 Java 시험 **69개, 실패·오류·생략 0개**, JAR·이미지·Nginx 문법 검사에 성공했다. [스키마](https://github.com/AnDev77/doChallenge/actions/runs/42772835654)·[채팅](https://github.com/AnDev77/doChallenge/actions/runs/42772835974)·[이메일](https://github.com/AnDev77/doChallenge/actions/runs/42772835642) 게이트도 성공했다. 이 문서만 갱신한 최종 커밋은 원격 게이트를 별도로 확인한다.
 
 격리 CI는 동일 소스 이미지를 두 태그로 실행하므로 **실제 구·신 버전의 MySQL 스키마 동시 호환성을 입증하지 않는다**. 기존 운영 DB의 백업·DDL 비교·복제 DB baseline과 구·신 버전 동시 기동, 연결 중인 WebSocket 드레인, 실제 EC2 도메인/TLS/SMTP·비밀 설정, Vercel 두 브라우저와 영속 볼륨 백업 복구가 필요하다. 운영 MySQL 볼륨을 삭제하지 않는다. Java 코드·CI 성공과 실제 회원 서비스 배포, Python 예측 성능 및 제품 수요는 각각 별도 판정이며, 독립 미래 정답이 없으므로 모델 성능은 HOLD다. 공개 로그에는 비밀값·원본 가격·비공개 성능 수치를 싣지 않는다.
