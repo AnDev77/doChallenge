@@ -34,6 +34,8 @@ def main() -> None:
         "WEB_ORIGIN": "https://shockgraph-web.vercel.app",
         "TLS_CERT_PATH": str(cert),
         "TLS_KEY_PATH": str(key),
+        "API_BLUE_IMAGE": "dochallenge:blue-ci",
+        "API_GREEN_IMAGE": "dochallenge:green-ci",
     }
     env = root / "deploy/.smoke.env"
     env.write_text("".join(f"{name}={value}\n" for name, value in values.items()))

@@ -1,0 +1,17 @@
+# Java Blue/Green 전환과 복귀
+
+기준일: 2026-11-10. `main` `0b9e926`, 열린 Java 초안 #10·#11·#12와 세 저장소의 원격 상태·작업 트리, Java `AGENTS.md`, 웹 일일 계획과 Python의 현재 제품 방향을 확인했다. 기존 Java 작업 트리의 미커밋 변경은 건드리지 않고 #12 최종 커밋 위에 별도 브랜치를 만들었다. 이번 작업 목표는 **같은 MySQL·Redis를 쓰는 두 Java 컨테이너의 검증·트래픽 전환·복귀**다.
+
+## 시작·중간·완료 근거
+
+- 시작: #12는 Flyway와 `ddl-auto: validate`를 도입했으나 운영 Compose는 단일 `api`이고 두 버전·Nginx 전환 경로가 없었다.
+- 중간: 별도 Compose에 `api-blue`·`api-green`과 공개/서버 루프백 전용 대기 프록시를 두었다. 두 앱은 단일 MySQL 볼륨·Redis 서비스·동일 비밀 환경을 사용한다. Nginx의 활성 대상은 파일로 지정하고, 전환 전 대기 프록시의 이메일 인증 가입·QQQ/SPY REST·인증 STOMP·재접속 스모크와 기존 합성 회원/대화 재조회가 성공해야 한다. 전환 후 공개 경로에서 같은 스모크가 실패하면 이전 대상으로 복귀한다.
+- 완료 조건: Python 전환 단위 시험, Java 21 전체 시험·JAR, Docker 구성·이미지, 두 색상 격리 기동과 양방향 스모크, 원격 PR 게이트를 확인한다. 현재 결과는 아래 시험 기록을 따른다.
+
+## 작업량·오류·검증 범위
+
+새 운영 Compose·Nginx 설정·전환 명령·시험 전용 오버레이·원격 워크플로·Python 단위 시험·스모크 실행 파일과 이 리뷰를 추가했다. 기존 합성 인수 스모크는 대기 포트와 색상 간 원본 재조회를 지원하도록 확장했다. 로컬 Python 단위 시험 4개와 구문·diff 검사는 통과했다. 최초 로컬 `./gradlew`는 실행 권한 부재로 시작하지 못해 `bash ./gradlew`로 재시도했으나 Gradle 배포 파일 다운로드가 이 환경의 네트워크 제한으로 실패했다. 로컬 Java 시험·JAR·Docker 인수 시험은 미실행이다.
+
+첫 원격 커밋 `820f7ec`의 [Blue/Green 인수 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42772835763)는 Java 전체 시험·실행 JAR, Python 전환 시험, 이미지 빌드, 공유 MySQL·Redis와 두 API 기동, 대기 경로 스모크, Nginx 전환 및 역방향 복귀를 모두 성공으로 기록했다. [기존 배포 인수 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42772835671)는 단일 스택의 가입·채팅·재기동·원본 유지에 성공했다. [운영 이미지/구성 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42772835808)는 Java 시험 **69개, 실패·오류·생략 0개**, JAR·이미지·Nginx 문법 검사에 성공했다. [스키마](https://github.com/AnDev77/doChallenge/actions/runs/42772835654)·[채팅](https://github.com/AnDev77/doChallenge/actions/runs/42772835974)·[이메일](https://github.com/AnDev77/doChallenge/actions/runs/42772835642) 게이트도 성공했다. 이 문서만 갱신한 최종 커밋은 원격 게이트를 별도로 확인한다.
+
+격리 CI는 동일 소스 이미지를 두 태그로 실행하므로 **실제 구·신 버전의 MySQL 스키마 동시 호환성을 입증하지 않는다**. 기존 운영 DB의 백업·DDL 비교·복제 DB baseline과 구·신 버전 동시 기동, 연결 중인 WebSocket 드레인, 실제 EC2 도메인/TLS/SMTP·비밀 설정, Vercel 두 브라우저와 영속 볼륨 백업 복구가 필요하다. 운영 MySQL 볼륨을 삭제하지 않는다. Java 코드·CI 성공과 실제 회원 서비스 배포, Python 예측 성능 및 제품 수요는 각각 별도 판정이며, 독립 미래 정답이 없으므로 모델 성능은 HOLD다. 공개 로그에는 비밀값·원본 가격·비공개 성능 수치를 싣지 않는다.

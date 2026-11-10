@@ -1,0 +1,57 @@
+name: Blue Green 전환 인수 시험
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bluegreen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      SHOCKGRAPH_BLUEGREEN_OVERLAY: deploy/compose.bluegreen.smoke.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 회원·채팅 전체 시험과 실행 JAR
+        run: bash ./gradlew test bootJar --no-daemon
+      - name: 전환·되돌리기 단위 시험과 격리 설정
+        run: |
+          python3 -m unittest discover -s deploy -p 'test_bluegreen.py'
+          python3 deploy/prepare_smoke.py
+          python3 deploy/bluegreen.py init-blue
+          docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml config --quiet
+      - name: 두 색상 이미지 준비
+        run: |
+          docker build -f deploy/Dockerfile -t dochallenge:blue-ci .
+          docker tag dochallenge:blue-ci dochallenge:green-ci
+      - name: 공유 MySQL Redis와 두 API·프록시 기동
+        run: |
+          docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml up -d --wait --wait-timeout 360 api-blue
+          docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml up -d --wait --wait-timeout 360 api-green nginx nginx-standby
+      - name: 대기 검증·전환·되돌리기·기존 데이터 확인
+        run: |
+          python3 deploy/bluegreen.py green --env-file deploy/.smoke.env --smoke-program deploy/bluegreen_smoke.py
+          python3 deploy/bluegreen.py blue --env-file deploy/.smoke.env --smoke-program deploy/bluegreen_smoke.py
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'deploy')
+          import bluegreen
+          assert bluegreen.active_color() == 'blue'
+          print('PASS: active blue after green switch and rollback')
+          PY
+      - name: 실패 시 상태 요약
+        if: failure()
+        run: docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml ps
+      - name: 격리 자원 삭제
+        if: always()
+        run: |
+          docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml down -v --remove-orphans || true
+          rm -f deploy/.smoke-state.json
