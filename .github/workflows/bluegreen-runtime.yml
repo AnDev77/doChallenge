@@ -10,11 +10,15 @@ permissions:
 jobs:
   bluegreen:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     env:
       SHOCKGRAPH_BLUEGREEN_OVERLAY: deploy/compose.bluegreen.smoke.yaml
+      # PR #12 is the previous schema-managed app; use an immutable commit, not a moving branch.
+      OLD_VERSION_SHA: d2dca6602bcd7131cc1993d0b009eb220967fe07
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -28,10 +32,28 @@ jobs:
           python3 deploy/prepare_smoke.py
           python3 deploy/bluegreen.py init-blue
           docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml config --quiet
-      - name: 두 색상 이미지 준비
+      - name: 이전 버전의 독립 소스 준비
         run: |
-          docker build -f deploy/Dockerfile -t dochallenge:blue-ci .
-          docker tag dochallenge:blue-ci dochallenge:green-ci
+          test "$OLD_VERSION_SHA" != "$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$OLD_VERSION_SHA" HEAD
+          git worktree add --detach "$RUNNER_TEMP/dochallenge-old" "$OLD_VERSION_SHA"
+          test "$(git -C "$RUNNER_TEMP/dochallenge-old" rev-parse HEAD)" = "$OLD_VERSION_SHA"
+          echo 'PASS: distinct previous source commit selected'
+      - name: 구·신 커밋 이미지 별도 빌드
+        run: |
+          docker build --label "org.opencontainers.image.revision=$OLD_VERSION_SHA" \
+            -f "$RUNNER_TEMP/dochallenge-old/deploy/Dockerfile" \
+            -t dochallenge:blue-ci "$RUNNER_TEMP/dochallenge-old"
+          docker build --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+            -f deploy/Dockerfile -t dochallenge:green-ci .
+          blue_revision=$(docker image inspect dochallenge:blue-ci \
+            --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')
+          green_revision=$(docker image inspect dochallenge:green-ci \
+            --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')
+          test "$blue_revision" = "$OLD_VERSION_SHA"
+          test "$green_revision" = "$(git rev-parse HEAD)"
+          test "$blue_revision" != "$green_revision"
+          echo 'PASS: two images built from different immutable commits'
       - name: 공유 MySQL Redis와 두 API·프록시 기동
         run: |
           docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml up -d --wait --wait-timeout 360 api-blue
