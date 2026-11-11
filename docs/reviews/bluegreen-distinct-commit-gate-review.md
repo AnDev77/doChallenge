@@ -16,6 +16,6 @@
 
 ## 완료 판정과 제한
 
-- 새 PR 커밋의 Java 전체 시험·실행 JAR·Docker 인수·원격 PR 게이트는 Actions 종료 상태를 확인해 기록한다. 실패 또는 생략은 통과로 세지 않는다.
+- 첫 기능 커밋의 [Blue/Green 원격 인수 시험](https://github.com/AnDev77/doChallenge/actions/runs/42970649831)에서 이전 커밋과 새 커밋의 별도 이미지 빌드, 동일 MySQL·Redis에 두 API 기동, 대기 경로 가입·채팅 스모크, 공개 경로 전환·되돌리기와 기록 재조회가 성공했다. [Java 전체 시험·JAR·운영 이미지 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42970650118)는 69개 시험·실패 0·오류 0·생략 0, 실행 JAR·Nginx 구성을 확인했다. [단일 배포 인수](https://github.com/AnDev77/doChallenge/actions/runs/42970649899), [스키마](https://github.com/AnDev77/doChallenge/actions/runs/42970650080), [이메일](https://github.com/AnDev77/doChallenge/actions/runs/42970649960), [채팅](https://github.com/AnDev77/doChallenge/actions/runs/42970649962) 게이트도 성공했다. 문서 기록만 추가한 최종 커밋의 원격 게이트는 별도 확인한다.
 - 두 소스 커밋은 서로 다르지만 현재 Java 앱 소스와 Flyway V1 정의는 같다. 따라서 이 게이트가 통과해도 **실제 스키마 변경의 구·신 버전 호환성**, 운영 DB 백업·복원, 실제 SMTP 수신, 기존 WebSocket 연결 유지, 운영 EC2 전환을 입증하지 않는다. 다음 마이그레이션 때는 그 직전 실제 운영 이미지와 새 이미지로 다시 시험한다.
 - PR은 초안으로 유지하고 병합·운영 배포하지 않는다. Python의 미래 예측 성능과 제품 수요는 이 Java 인수 시험과 별개로 HOLD다.
