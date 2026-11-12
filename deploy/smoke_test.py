@@ -201,6 +201,23 @@ def main() -> None:
     require(status, 200, "login")
     token = logged_in["data"]["accessToken"]
 
+    # Only the V2 application serves this endpoint. The V1 app stays available
+    # during the same-MySQL Blue/Green switch without requiring the new table.
+    check_watchlist = os.getenv("SHOCKGRAPH_SMOKE_SKIP_RECREATE") != "1" or \
+        os.getenv("SHOCKGRAPH_SMOKE_WATCHLIST") == "1"
+    if check_watchlist:
+        watchlist = "/api/v1/watchlist"
+        status, _ = request(watchlist)
+        require(status, 401, "anonymous watchlist read rejection")
+        status, saved_list = request(watchlist + "/QQQ", method="PUT", token=token)
+        require(status, 200, "watchlist QQQ add")
+        if saved_list["data"] != ["QQQ"]:
+            raise AssertionError("watchlist add response mismatch")
+        status, read_list = request(watchlist, token=token)
+        require(status, 200, "watchlist member read")
+        if read_list["data"] != ["QQQ"]:
+            raise AssertionError("watchlist read mismatch")
+
     path = "/api/v1/finance/rooms/QQQ/messages"
     status, _ = request(path, method="POST", payload={"requestId": str(uuid.uuid4()),
                                                       "content": "unauthorized"})
@@ -265,6 +282,10 @@ def main() -> None:
     status, _ = request("/api/v1/auth/login", method="POST",
                         payload={"email": email, "password": password})
     require(status, 200, "login after Compose recreation")
+    status, retained = request("/api/v1/watchlist", token=token)
+    require(status, 200, "watchlist after recreation")
+    if retained["data"] != ["QQQ"]:
+        raise AssertionError("watchlist entry lost after recreation")
     status, recovered = request(path + f"?afterId={first_id}")
     require(status, 200, "chat history after Compose recreation")
     if [row["id"] for row in recovered["data"]] != [second_id]:

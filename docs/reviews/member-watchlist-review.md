@@ -12,7 +12,7 @@
 
 - 회원 JWT로 확인한 서버측 회원 ID에만 묶이는 `GET /api/v1/watchlist`, `PUT /api/v1/watchlist/{symbol}`, `DELETE /api/v1/watchlist/{symbol}`. QQQ/SPY만 허용하고 다른 종목은 명시적으로 거절한다.
 - MySQL 추가 V2: `member_watchlist` 신규 테이블과 `(member_id,symbol)` 유일 제약·회원 FK. V1 회원과 채팅 구조를 건드리지 않는다. 기존 V1 앱 이미지와 새 V2 이미지가 같은 DB에 붙을 수 있는지 격리 Blue/Green 인수 시험으로 확인한다.
-- 기존 격리 smoke의 최신 스키마 기대값을 V2로 변경. 운영 DB 볼륨이나 공개 이미지에는 시험 전용 삭제 명령을 적용하지 않는다.
+- 기존 격리 smoke의 최신 스키마 기대값을 V2로 변경. 신버전 HTTP 관심 목록 작성/조회와 단일 스택 컨테이너 재생성 뒤 목록 보존을 검증한다. Blue/Green의 구버전에는 신기능 경로를 호출하지 않는다. 운영 DB 볼륨이나 공개 이미지에는 시험 전용 삭제 명령을 적용하지 않는다.
 
 ## 검증과 운영 한계
 
