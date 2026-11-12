@@ -165,8 +165,8 @@ def migrated_schema_version() -> str:
 
 
 def main() -> None:
-    if migrated_schema_version() != "1":
-        raise AssertionError("initial MySQL migration not recorded")
+    if migrated_schema_version() != "2":
+        raise AssertionError("member watchlist migration not recorded")
     state_path = os.getenv("SHOCKGRAPH_SMOKE_STATE_FILE")
     if state_path and Path(state_path).is_file():
         previous = json.loads(Path(state_path).read_text())
@@ -200,6 +200,23 @@ def main() -> None:
                                 payload={"email": email, "password": password})
     require(status, 200, "login")
     token = logged_in["data"]["accessToken"]
+
+    # Only the V2 application serves this endpoint. The V1 app stays available
+    # during the same-MySQL Blue/Green switch without requiring the new table.
+    check_watchlist = os.getenv("SHOCKGRAPH_SMOKE_SKIP_RECREATE") != "1" or \
+        os.getenv("SHOCKGRAPH_SMOKE_WATCHLIST") == "1"
+    if check_watchlist:
+        watchlist = "/api/v1/watchlist"
+        status, _ = request(watchlist)
+        require(status, 401, "anonymous watchlist read rejection")
+        status, saved_list = request(watchlist + "/QQQ", method="PUT", token=token)
+        require(status, 200, "watchlist QQQ add")
+        if saved_list["data"] != ["QQQ"]:
+            raise AssertionError("watchlist add response mismatch")
+        status, read_list = request(watchlist, token=token)
+        require(status, 200, "watchlist member read")
+        if read_list["data"] != ["QQQ"]:
+            raise AssertionError("watchlist read mismatch")
 
     path = "/api/v1/finance/rooms/QQQ/messages"
     status, _ = request(path, method="POST", payload={"requestId": str(uuid.uuid4()),
@@ -260,11 +277,15 @@ def main() -> None:
     subprocess.run(compose + ["down", "--remove-orphans"], cwd=root, check=True)
     subprocess.run(compose + ["up", "-d", "--wait", "--wait-timeout", "360"],
                    cwd=root, check=True)
-    if migrated_schema_version() != "1":
+    if migrated_schema_version() != "2":
         raise AssertionError("MySQL migration history changed after recreation")
     status, _ = request("/api/v1/auth/login", method="POST",
                         payload={"email": email, "password": password})
     require(status, 200, "login after Compose recreation")
+    status, retained = request("/api/v1/watchlist", token=token)
+    require(status, 200, "watchlist after recreation")
+    if retained["data"] != ["QQQ"]:
+        raise AssertionError("watchlist entry lost after recreation")
     status, recovered = request(path + f"?afterId={first_id}")
     require(status, 200, "chat history after Compose recreation")
     if [row["id"] for row in recovered["data"]] != [second_id]:

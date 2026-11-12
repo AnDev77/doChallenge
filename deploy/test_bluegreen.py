@@ -39,12 +39,15 @@ class BlueGreenTest(unittest.TestCase):
         self.assertEqual(bluegreen.active_color(), "green")
         self.assertEqual([event["standby"] for event in events if isinstance(event, dict)],
                          [True, False])
+        self.assertEqual([event["target"] for event in events if isinstance(event, dict)],
+                         ["green", "green"])
         self.assertIn(("test.env", "exec", "-T", "nginx", "nginx", "-s", "reload"), events)
 
     def test_public_smoke_failure_restores_previous_color(self):
         calls = []
-        def fake_smoke(program, *, standby):
+        def fake_smoke(program, *, standby, target):
             calls.append(standby)
+            self.assertEqual(target, "green")
             if not standby:
                 raise subprocess.CalledProcessError(1, program)
         with patch.object(bluegreen, "compose"), patch.object(bluegreen, "smoke", side_effect=fake_smoke):
