@@ -6,6 +6,8 @@
 
 새 빈 DB에서는 Flyway `V1__initial_schema.sql`이 회원·기존 모임·QQQ/SPY 채팅 테이블을 만들고, Hibernate는 구조를 검증만 한다. 격리 인수 시험은 마이그레이션 이력이 `1`인 상태에서 가입·대화를 저장한 뒤 컨테이너를 재생성하고 같은 이력과 데이터를 다시 확인한다. 기존 `ddl-auto: update` DB에는 자동 baseline을 하지 않는다. **기존 운영 DB가 있다면 이 버전은 기동을 거절하는 것이 정상**이다. 백업과 실제 테이블·인덱스 비교, 별도 복제 DB의 baseline 및 구·신 버전 동시 연결 검증 후에만 그 DB의 전환을 검토한다. 이 저장소 검사는 실제 DB의 호환성을 승인하지 않는다.
 
+후속 관심 목록 PR에서는 `V2__member_watchlist.sql`이 기존 회원·채팅 테이블을 수정하거나 삭제하지 않고 회원별 QQQ/SPY 목록 테이블을 추가한다. 두 커밋 간 실제 스키마 버전이 달라지므로 Blue/Green 격리 인수 시험은 구버전 V1 이미지와 신버전 V2 이미지를 같은 MySQL에 연결한다. 운영 DB에 대한 자동 적용 여부는 백업, 이전 이미지 재기동, 실제 앱 및 채팅 스모크를 확인한 뒤에 결정한다. `GET/PUT/DELETE /api/v1/watchlist[/{symbol}]`는 인증 회원에게만 제공한다.
+
 ## 배포 전 격리 인수 시험
 
 `.github/workflows/deploy-smoke.yml`은 GitHub Actions의 일회용 Docker 환경에서 `compose.yaml`과 시험 전용 `compose.smoke.yaml`을 함께 실행한다. 무작위 시험 비밀번호와 1일짜리 자체 서명 인증서를 생성하고, 외부 수신자 대신 내부 Mailpit SMTP를 사용한다. `deploy/smoke_test.py`는 Nginx HTTPS를 통해 인증 메일 수신→코드 확인→일회용 증표 가입→로그인→미인증 쓰기 거부→QQQ/STOMP 실시간 수신→중복 요청 방지→연결 종료 후 `afterId` 복구→SPY 분리를 확인한다. 이어서 이름 있는 MySQL 볼륨은 보존한 채 컨테이너를 재생성하고 기존 회원의 재로그인·대화 기록 재조회를 확인한다. 코드·증표·JWT·메일 본문은 시험 로그에 출력하지 않는다.

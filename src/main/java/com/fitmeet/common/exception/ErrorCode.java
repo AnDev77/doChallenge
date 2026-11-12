@@ -27,7 +27,8 @@ public enum ErrorCode {
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "Chat room not found."),
     CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CHAT_002", "Chat room access is denied."),
     INVALID_CHAT_MESSAGE(HttpStatus.BAD_REQUEST, "CHAT_003", "Chat message is invalid."),
-    CHAT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "CHAT_004", "A request ID was already used for different content.");
+    CHAT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "CHAT_004", "A request ID was already used for different content."),
+    WATCHLIST_SYMBOL_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "WATCHLIST_001", "Symbol is not supported.");
 
     private final HttpStatus status;
     private final String code;

@@ -165,8 +165,8 @@ def migrated_schema_version() -> str:
 
 
 def main() -> None:
-    if migrated_schema_version() != "1":
-        raise AssertionError("initial MySQL migration not recorded")
+    if migrated_schema_version() != "2":
+        raise AssertionError("member watchlist migration not recorded")
     state_path = os.getenv("SHOCKGRAPH_SMOKE_STATE_FILE")
     if state_path and Path(state_path).is_file():
         previous = json.loads(Path(state_path).read_text())
@@ -260,7 +260,7 @@ def main() -> None:
     subprocess.run(compose + ["down", "--remove-orphans"], cwd=root, check=True)
     subprocess.run(compose + ["up", "-d", "--wait", "--wait-timeout", "360"],
                    cwd=root, check=True)
-    if migrated_schema_version() != "1":
+    if migrated_schema_version() != "2":
         raise AssertionError("MySQL migration history changed after recreation")
     status, _ = request("/api/v1/auth/login", method="POST",
                         payload={"email": email, "password": password})
