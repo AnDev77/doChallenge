@@ -36,14 +36,14 @@ GitHub Actions의 **EC2 SSM read-only preflight**는 AWS Systems Manager를 통�
        "Condition": {
          "StringEquals": {
            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-           "token.actions.githubusercontent.com:sub": "repo:AnDev77/doChallenge:environment:ec2-probe"
+           "token.actions.githubusercontent.com:sub": "repo:AnDev77@57936145/doChallenge@1307624804:environment:ec2-probe"
          }
        }
      }]
    }
    ```
 
-   위 subject는 GitHub 기본 형식입니다. 저장소가 숫자 ID가 포함된 immutable subject를 사용한다면, 저장소의 실제 형식으로 바꾸고 정확한 일치를 유지합니다. [GitHub OIDC subject 공식 안내](https://docs.github.com/en/actions/reference/security/oidc#example-subject-claims)를 참고하세요.
+   위 subject는 이 저장소의 숫자 ID를 포함하는 형식입니다. 최초 연결에서 ID 없는 이전 형식으로는 AWS STS가 거절했고, ID 포함 형식으로 바꾼 뒤 사용자가 성공을 확인했습니다. 다른 저장소에 복사할 때는 해당 저장소의 실제 subject와 정확히 일치시킵니다. [GitHub OIDC subject 공식 안내](https://docs.github.com/en/actions/reference/security/oidc#example-subject-claims)를 참고하세요.
 
    **역할의 권한 정책:**
 
