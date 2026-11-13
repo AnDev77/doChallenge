@@ -1,0 +1,153 @@
+name: EC2 ECR candidate
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'ec2-ecr-candidate-live' || format('ec2-ecr-candidate-check-{0}', github.ref) }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      REDIS_TEST_HOST: localhost
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check the deploy code and full Java suite
+        run: |
+          python3 -B -m unittest discover -s deploy -p 'test_*.py' -v
+          bash ./gradlew test bootJar --no-daemon
+          python3 - <<'PY'
+          from glob import glob
+          from xml.etree import ElementTree as ET
+          from zipfile import ZipFile
+          roots = [ET.parse(p).getroot() for p in glob('build/test-results/test/TEST-*.xml')]
+          assert sum(int(r.get('tests', 0)) for r in roots) > 0
+          assert all(int(r.get(k, 0)) == 0 for r in roots for k in ('failures', 'errors', 'skipped'))
+          assert any(r.get('name', '').endswith('EmailProofRedisIntegrationTest')
+                     and int(r.get('tests', 0)) >= 5 for r in roots)
+          jars = [p for p in glob('build/libs/*.jar') if not p.endswith('-plain.jar')]
+          assert len(jars) == 1
+          with ZipFile(jars[0]) as jar:
+              assert 'BOOT-INF/classes/com/fitmeet/financechat/FinanceChatController.class' in jar.namelist()
+          PY
+      - name: Build and exercise the exact candidate image
+        shell: bash
+        run: |
+          docker build --platform linux/amd64 -f deploy/Dockerfile --label "org.opencontainers.image.revision=$GITHUB_SHA" -t shockgraph-candidate:verified .
+          export CANDIDATE_IMAGE=shockgraph-candidate:verified
+          export DB_PASSWORD="$(openssl rand -hex 32)" MYSQL_ROOT_PASSWORD="$(openssl rand -hex 32)" JWT_SECRET="$(openssl rand -hex 32)"
+          candidate_compose() { docker compose --project-name shockgraph-ci-candidate -f deploy/candidate/compose.yaml "$@"; }
+          trap 'candidate_compose down --volumes >/dev/null 2>&1' EXIT # Ephemeral CI project only
+          source deploy/candidate/check.sh
+          candidate_compose config --quiet
+          candidate_compose up -d --no-build --wait --wait-timeout 240 mysql redis api
+          check_candidate
+          for service in mysql redis api; do
+            id="$(candidate_compose ps -q "$service")"
+            test -n "$id"
+            test "$(docker inspect --format '{{len .HostConfig.PortBindings}}' "$id")" = 0
+          done
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" == refs/heads/main ]]; then
+            docker save -o "$RUNNER_TEMP/candidate.tar" "$CANDIDATE_IMAGE"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        with:
+          name: verified-candidate
+          path: ${{ runner.temp }}/candidate.tar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: ec2-candidate-publish
+    permissions:
+      actions: read
+      id-token: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    env:
+      AWS_REGION: us-east-2
+      ECR_REPOSITORY: shockgraph-java-candidate
+      AWS_PAGER: ""
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: verified-candidate
+          path: ${{ runner.temp }}
+      - name: Load the verified image and check its source revision
+        run: |
+          docker load -i "$RUNNER_TEMP/candidate.tar"
+          test "$(docker image inspect shockgraph-candidate:verified --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.AWS_CANDIDATE_PUBLISH_ROLE_ARN }}
+          role-session-name: candidate-publish-${{ github.run_id }}
+          role-duration-seconds: 900
+          retry-max-attempts: 3
+      - name: Publish and resolve ECR image digest
+        id: push
+        shell: bash
+        run: |
+          account=$(aws sts get-caller-identity --query Account --output text)
+          [[ "$account" =~ ^[0-9]{12}$ ]]
+          registry="$account.dkr.ecr.$AWS_REGION.amazonaws.com"
+          tag="$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          export DOCKER_CONFIG="$(mktemp -d)"
+          trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          docker tag shockgraph-candidate:verified "$registry/$ECR_REPOSITORY:$tag"
+          docker push "$registry/$ECR_REPOSITORY:$tag"
+          digest=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids "imageTag=$tag" --query 'imageDetails[0].imageDigest' --output text)
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+  start-candidate:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    environment: ec2-candidate
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.AWS_CANDIDATE_RUN_ROLE_ARN }}
+          role-session-name: candidate-run-${{ github.run_id }}
+          role-duration-seconds: 1200
+          retry-max-attempts: 3
+      - name: Start only the isolated candidate on EC2
+        env:
+          TARGET_INSTANCE: ${{ vars.EC2_INSTANCE_ID }}
+          DOCUMENT_HASH: ${{ vars.AWS_CANDIDATE_DOCUMENT_SHA256 }}
+          IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+          AWS_MAX_ATTEMPTS: '2'
+        run: python3 -B deploy/candidate/send.py --instance "$TARGET_INSTANCE" --digest "$IMAGE_DIGEST" --document-hash "$DOCUMENT_HASH"
