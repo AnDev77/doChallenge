@@ -17,10 +17,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class FinanceChatService {
     private final FinanceMessageRepository repository;
     private final SimpMessagingTemplate broker;
+    private final FinancePostLimiter postLimiter;
 
-    public FinanceChatService(FinanceMessageRepository repository, SimpMessagingTemplate broker) {
+    public FinanceChatService(FinanceMessageRepository repository, SimpMessagingTemplate broker,
+            FinancePostLimiter postLimiter) {
         this.repository = repository;
         this.broker = broker;
+        this.postLimiter = postLimiter;
     }
 
     static String symbol(String value) {
@@ -55,6 +58,7 @@ public class FinanceChatService {
             if (!previous.get().getContent().equals(content)) throw new BaseException(ErrorCode.CHAT_REQUEST_CONFLICT);
             return FinanceMessageView.from(previous.get());
         }
+        postLimiter.check(authorId);
         // Database unique key is the final guard against concurrent duplicate requests.
         FinanceMessageView saved = FinanceMessageView.from(
                 repository.saveAndFlush(new FinanceMessage(symbol, authorId, requestId, content)));
