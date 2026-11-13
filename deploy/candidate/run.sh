@@ -29,8 +29,8 @@ export CANDIDATE_IMAGE="$registry/shockgraph-java-candidate@$digest"
 aws ecr get-login-password --region "$region" |
     docker login --username AWS --password-stdin "$registry"
 docker pull "$CANDIDATE_IMAGE"
-docker image inspect "$CANDIDATE_IMAGE" --format '{{json .RepoDigests}}' |
-    python3 -c 'import json,sys; sys.exit(sys.argv[1] not in json.load(sys.stdin))' "$CANDIDATE_IMAGE"
+docker image inspect "$CANDIDATE_IMAGE" |
+    python3 -c 'import json,sys; sys.exit(sys.argv[1] not in json.load(sys.stdin)[0]["RepoDigests"])' "$CANDIDATE_IMAGE"
 
 stage=settings
 cat > "$work/compose.yaml" <<'SHOCKGRAPH_COMPOSE'
