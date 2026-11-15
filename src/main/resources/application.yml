@@ -18,6 +18,9 @@ server:
   port: 8080
 
 app:
+  briefing:
+    upstream-origin: ${BRIEFING_UPSTREAM_ORIGIN:}
+    internal-token: ${BRIEFING_INTERNAL_TOKEN:}
   mail:
     from: ${MAIL_FROM:}
   jwt:
