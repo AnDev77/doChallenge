@@ -1,0 +1,18 @@
+name: Blue Green schema readiness
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-source-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard behavior
+        run: python3 -m unittest discover -s deploy -p 'test_bluegreen_readiness.py' -v
+      - name: Report deployment blocker without exposing configuration secrets
+        run: python3 deploy/bluegreen_readiness.py
