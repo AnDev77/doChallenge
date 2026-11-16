@@ -52,10 +52,11 @@ def compose(env_file: str, *args: str) -> None:
                    cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
 
 
-def smoke(program: str, *, standby: bool) -> None:
+def smoke(program: str, *, standby: bool, target: str) -> None:
     env = dict(os.environ)
     env["SHOCKGRAPH_SMOKE_BASE"] = "https://127.0.0.1:8444" if standby else "https://localhost"
     env["SHOCKGRAPH_SMOKE_SKIP_RECREATE"] = "1"
+    env["SHOCKGRAPH_SMOKE_WATCHLIST"] = "1" if target == "green" else "0"
     env["SHOCKGRAPH_SMOKE_STATE_FILE"] = "deploy/.smoke-state.json"
     subprocess.run([program], cwd=ROOT, check=True, stdout=subprocess.DEVNULL, env=env)
 
@@ -70,14 +71,14 @@ def switch(target: str, env_file: str, smoke_program: str) -> None:
             "http://127.0.0.1:8080/actuator/health")
     compose(env_file, "exec", "-T", "nginx", "nginx", "-t")
     compose(env_file, "exec", "-T", "nginx-standby", "nginx", "-t")
-    smoke(smoke_program, standby=True)
+    smoke(smoke_program, standby=True, target=target)
     write_upstream(target)
     try:
         compose(env_file, "exec", "-T", "nginx", "nginx", "-t")
         compose(env_file, "exec", "-T", "nginx-standby", "nginx", "-t")
         compose(env_file, "exec", "-T", "nginx", "nginx", "-s", "reload")
         compose(env_file, "exec", "-T", "nginx-standby", "nginx", "-s", "reload")
-        smoke(smoke_program, standby=False)
+        smoke(smoke_program, standby=False, target=target)
     except (OSError, subprocess.CalledProcessError):
         write_upstream(previous)
         compose(env_file, "exec", "-T", "nginx", "nginx", "-t")
