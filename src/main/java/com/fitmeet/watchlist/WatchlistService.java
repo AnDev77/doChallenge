@@ -2,6 +2,7 @@ package com.fitmeet.watchlist;
 
 import com.fitmeet.common.exception.BaseException;
 import com.fitmeet.common.exception.ErrorCode;
+import com.fitmeet.instruments.InstrumentCatalog;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,10 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class WatchlistService {
     private final WatchlistRepository repository;
 
-    public WatchlistService(WatchlistRepository repository) { this.repository = repository; }
+    private final InstrumentCatalog catalog;
+
+    public WatchlistService(WatchlistRepository repository, InstrumentCatalog catalog) {
+        this.repository = repository;
+        this.catalog = catalog;
+    }
 
     private String supported(String symbol) {
-        if (!"QQQ".equals(symbol) && !"SPY".equals(symbol)) {
+        if (!catalog.supportsWatchlist(symbol)) {
             throw new BaseException(ErrorCode.WATCHLIST_SYMBOL_NOT_SUPPORTED);
         }
         return symbol;

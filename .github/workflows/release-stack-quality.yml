@@ -36,10 +36,13 @@ jobs:
           totals = {k: sum(int(r.get(k, 0)) for r in roots) for k in ('tests', 'failures', 'errors', 'skipped')}
           assert totals['failures'] == totals['errors'] == totals['skipped'] == 0
           assert any(r.get('name', '').endswith('EmailProofRedisIntegrationTest') and int(r.get('tests', 0)) >= 5 for r in roots)
+          assert any(r.get('name', '').endswith('WatchlistIntegrationTest') and int(r.get('tests', 0)) == 2 for r in roots)
           jar = next(p for p in glob.glob('build/libs/*.jar') if not p.endswith('-plain.jar'))
           with zipfile.ZipFile(jar) as z:
               for path in ('com/fitmeet/financechat/FinanceChatController.class',
-                           'com/fitmeet/auth/presentation/response/EmailVerificationResponse.class'):
+                           'com/fitmeet/auth/presentation/response/EmailVerificationResponse.class',
+                           'com/fitmeet/instruments/InstrumentController.class',
+                           'com/fitmeet/watchlist/WatchlistController.class'):
                   assert 'BOOT-INF/classes/' + path in z.namelist()
           print(totals)
           PY

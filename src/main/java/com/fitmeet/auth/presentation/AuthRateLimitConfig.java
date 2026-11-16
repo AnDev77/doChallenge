@@ -24,6 +24,12 @@ public class AuthRateLimitConfig implements WebMvcConfigurer, HandlerInterceptor
         registry.addMapping("/api/v1/finance/rooms/**").allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "OPTIONS").allowedHeaders("Content-Type", "Authorization")
                 .allowCredentials(false);
+        registry.addMapping("/api/v1/instruments").allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS").allowCredentials(false);
+        registry.addMapping("/api/v1/watchlist").allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS").allowedHeaders("Authorization").allowCredentials(false);
+        registry.addMapping("/api/v1/watchlist/*").allowedOrigins(allowedOrigins)
+                .allowedMethods("PUT", "DELETE", "OPTIONS").allowedHeaders("Authorization").allowCredentials(false);
     }
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

@@ -206,6 +206,10 @@ def main() -> None:
     check_watchlist = os.getenv("SHOCKGRAPH_SMOKE_SKIP_RECREATE") != "1" or \
         os.getenv("SHOCKGRAPH_SMOKE_WATCHLIST") == "1"
     if check_watchlist:
+        status, catalog = request("/api/v1/instruments")
+        require(status, 200, "public instrument catalog")
+        if [item["symbol"] for item in catalog["data"] if item["featured"]] != ["CAMT", "SPCX", "AVGO"]:
+            raise AssertionError("featured catalog mismatch")
         watchlist = "/api/v1/watchlist"
         status, _ = request(watchlist)
         require(status, 401, "anonymous watchlist read rejection")
@@ -213,9 +217,13 @@ def main() -> None:
         require(status, 200, "watchlist QQQ add")
         if saved_list["data"] != ["QQQ"]:
             raise AssertionError("watchlist add response mismatch")
+        status, added = request(watchlist + "/AVGO", method="PUT", token=token)
+        require(status, 200, "watchlist AVGO add")
+        if added["data"] != ["AVGO", "QQQ"]:
+            raise AssertionError("featured watchlist add mismatch")
         status, read_list = request(watchlist, token=token)
         require(status, 200, "watchlist member read")
-        if read_list["data"] != ["QQQ"]:
+        if read_list["data"] != ["AVGO", "QQQ"]:
             raise AssertionError("watchlist read mismatch")
 
     path = "/api/v1/finance/rooms/QQQ/messages"
@@ -284,7 +292,7 @@ def main() -> None:
     require(status, 200, "login after Compose recreation")
     status, retained = request("/api/v1/watchlist", token=token)
     require(status, 200, "watchlist after recreation")
-    if retained["data"] != ["QQQ"]:
+    if retained["data"] != ["AVGO", "QQQ"]:
         raise AssertionError("watchlist entry lost after recreation")
     status, recovered = request(path + f"?afterId={first_id}")
     require(status, 200, "chat history after Compose recreation")
