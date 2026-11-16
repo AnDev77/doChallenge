@@ -74,6 +74,8 @@ IP 인증서 자동 갱신은 Certbot 타이머와 갱신 성공 시 Nginx **컨
 
 `deploy/compose.bluegreen.yaml`은 **별도 운영 구성**이다. 기존 단일 `compose.yaml`과 함께 실행하지 않는다. 두 Java 이미지에는 승인된 서로 다른 불변 커밋 태그를 `API_BLUE_IMAGE`·`API_GREEN_IMAGE`로 지정한다. 두 컨테이너는 한 MySQL 볼륨과 Redis를 사용하고 외부 포트는 공개 Nginx 80/443 및 서버 내부 전용 대기 프록시 `127.0.0.1:8444`뿐이다. 최초 빈 설치 전에 `python3 deploy/bluegreen.py init-blue`로 활성 파일을 만든다. 이후 두 이미지·TLS·SMTP·비밀 설정을 준비해 `docker compose --env-file deploy/.env -f deploy/compose.bluegreen.yaml up -d --wait`로 기동한다. **기존 DB는 백업·DDL 비교·복제 DB baseline 없이는 이 경로로 전환하지 않는다.**
 
+`.github/workflows/bluegreen-runtime.yml`의 격리 시험은 이전 스키마 관리 커밋과 변경 커밋을 각각 체크아웃해 별도 Docker 이미지로 빌드한다. 두 앱이 동일 MySQL·Redis에서 기동하고, 가입·QQQ/SPY 채팅을 대기/공개 경로로 확인한 뒤 양방향 전환과 데이터 재조회를 검사한다. 현재 두 커밋의 Java 소스와 Flyway V1 구조는 같으므로, 이 시험은 **현재 구조의 두 커밋 동시 기동**까지만 확인한다. 이후 V2 이상의 마이그레이션이 생기면 이전 실제 운영 이미지와 새 이미지로 별도 호환 시험을 다시 해야 한다.
+
 대기 버전의 실제 API/인증 채팅 스모크를 수행하는 실행 파일을 준비한 뒤 `python3 deploy/bluegreen.py green --env-file deploy/.env --smoke-program <스모크 실행 파일>`을 실행한다. 전환 명령은 대기 앱 health, 대기 프록시의 스모크, Nginx 문법, 공개 경로 전환 후 스모크를 확인하고 실패하면 이전 색상으로 되돌린다. 반대 방향 명령이 명시적 복귀다. `--smoke-program`에는 운영에 맞는 HTTPS 인증·QQQ/SPY 채팅 합성 시험이 필요하며, 저장소의 `bluegreen_smoke.py`는 **격리 Mailpit 시험 전용**이다. 전환 중 기존 WebSocket은 종전 앱을 사용하므로 구 앱을 즉시 종료하지 않는다. 새 연결·재접속을 확인하고 양 버전의 DB 호환성을 검증한 뒤에만 구 버전을 중지한다. 이 구성은 코드와 격리 시험이며 EC2 운영 전환 성공 주장이 아니다.
 
 현재는 **운영 전환 HOLD**다. `python3 deploy/bluegreen_readiness.py --enforce`는 버전 관리 스키마와 `ddl-auto: validate`의 소스 조건만 검사한다. 실제 기존 DB의 마이그레이션 이력과 구·신 앱 동시 호환, 두 색상 기동, WebSocket 연결 유지, 전환·되돌리기 시험은 아직 필요하다. 운영 전환은 EC2에서 그 조건을 검증한 뒤에만 고려한다.

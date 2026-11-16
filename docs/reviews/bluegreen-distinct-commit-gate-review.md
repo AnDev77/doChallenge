@@ -1,0 +1,21 @@
+# Blue/Green 서로 다른 커밋 이미지 인수 게이트
+
+기준일: 2026-11-11. Java 회원·QQQ/SPY 채팅과 AWS EC2 Blue/Green 준비의 공개 가능한 기능 리뷰다.
+
+## 시작 근거와 작업 목표
+
+- 세 저장소의 원격 main·열린 PR·CI와 로컬 작업 트리를 대조했다. Java main은 `0b9e926`, 최신 초안 #13은 `63c2be5`이며 기존 Java 작업 트리의 미커밋 파일은 건드리지 않았다. #13 위 새 worktree에서 작업했다.
+- 기존 `.github/workflows/bluegreen-runtime.yml`은 한 번 만든 Java 이미지를 두 태그로 실행했다. 이 상태에서 전환이 성공해도 서로 다른 커밋의 앱이 같은 MySQL·Redis와 Flyway 이력을 함께 사용하는지는 확인되지 않는다.
+- 완료 기준은 이전 스키마 관리 커밋과 현재 커밋을 **별도로** 빌드하고, 이미지 출처가 다른지 확인한 뒤 기존 가입·실시간 STOMP·재접속·데이터 보존·양방향 전환 스모크를 그대로 통과시키는 것이다.
+
+## 중간 검증과 해결한 오류
+
+- 이전 버전을 PR #12 최종 커밋으로 고정하고 전체 Git 이력에서 조상 관계를 확인한다. 분리된 worktree에서 이전 이미지를 만들며 새 이미지에는 현재 커밋의 소스를 사용한다. 이미지 revision 라벨을 비교해 같은 소스를 단순 재태그한 경우를 거절한다.
+- 로컬 Python 전환 단위 시험 4개와 `git diff --check`를 통과했다. 로컬 Java 21은 설치돼 있지만 Gradle 배포본 다운로드가 이 환경의 네트워크에서 차단돼 Java 전체 시험·JAR 빌드는 수행하지 못했다. Docker CLI도 없어 로컬 컨테이너 인수는 수행하지 못했다.
+- 이번 변경은 CI의 이미지 준비 경로와 배포 안내·이 리뷰다. 공개 로그에는 합성 계정의 메일·비밀번호, 토큰, SMTP/JWT 비밀값을 내지 않는다.
+
+## 완료 판정과 제한
+
+- 첫 기능 커밋의 [Blue/Green 원격 인수 시험](https://github.com/AnDev77/doChallenge/actions/runs/42970649831)에서 이전 커밋과 새 커밋의 별도 이미지 빌드, 동일 MySQL·Redis에 두 API 기동, 대기 경로 가입·채팅 스모크, 공개 경로 전환·되돌리기와 기록 재조회가 성공했다. [Java 전체 시험·JAR·운영 이미지 게이트](https://github.com/AnDev77/doChallenge/actions/runs/42970650118)는 69개 시험·실패 0·오류 0·생략 0, 실행 JAR·Nginx 구성을 확인했다. [단일 배포 인수](https://github.com/AnDev77/doChallenge/actions/runs/42970649899), [스키마](https://github.com/AnDev77/doChallenge/actions/runs/42970650080), [이메일](https://github.com/AnDev77/doChallenge/actions/runs/42970649960), [채팅](https://github.com/AnDev77/doChallenge/actions/runs/42970649962) 게이트도 성공했다. 문서 기록만 추가한 최종 커밋의 원격 게이트는 별도 확인한다.
+- 두 소스 커밋은 서로 다르지만 현재 Java 앱 소스와 Flyway V1 정의는 같다. 따라서 이 게이트가 통과해도 **실제 스키마 변경의 구·신 버전 호환성**, 운영 DB 백업·복원, 실제 SMTP 수신, 기존 WebSocket 연결 유지, 운영 EC2 전환을 입증하지 않는다. 다음 마이그레이션 때는 그 직전 실제 운영 이미지와 새 이미지로 다시 시험한다.
+- PR은 초안으로 유지하고 병합·운영 배포하지 않는다. Python의 미래 예측 성능과 제품 수요는 이 Java 인수 시험과 별개로 HOLD다.
