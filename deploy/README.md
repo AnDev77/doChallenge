@@ -42,9 +42,13 @@ curl --fail https://<승인된 API 호스트>/healthz
 
 MySQL·Redis·Java 포트는 인터넷에 열지 않는다. 공개 HTTPS는 Nginx가 직접 종료하고 `X-Forwarded-For`를 실제 연결 IP로 덮어쓴다. 운영 웹의 Origin을 `WEB_ORIGIN`에 정확히 지정한다. VM·도메인/TLS·SMTP 설정이 없는 상태는 **배포 준비**이며 공개 배포 성공이 아니다. 인증서 갱신 후에는 Nginx 컨테이너를 재생성해 새 파일을 읽게 한다.
 
-## 내일 배포 확인 순서
+## 오늘 배포 전 읽기 전용 점검 (2026-11-11)
 
-1. 병합 순서: doChallenge PR #6 → #8 → #7 → 이 통합/배포 PR의 충돌·전체 CI 재확인. 웹 PR #1은 동일 API 계약과 원격 CI를 확인한 뒤 반영한다. 배포 직전 main 최신 커밋을 다시 확인한다.
+EC2 터미널에서 저장소 루트를 기준으로 `sudo python3 deploy/ec2_preflight.py --root "$PWD"`를 실행한다. JSON만 출력하며 비밀값/계정/역할 이름은 출력하지 않는다. `server_env`는 파일 존재·권한만 확인한 것이며 SMTP/JWT 값의 유효성 검증이 아니다. `iam_role=attached_permissions_unverified`는 역할 연결만 확인한 것이며 AWS 정책, SSM 원격 명령, Parameter Store 접근 성공이 아니다. `deployment_status=NOT_VERIFIED`는 정상적인 진단 표시다. 점검 종료 코드 0을 배포 자동화의 허가 조건으로 사용하지 않는다. [검증 범위와 실행 순서](../docs/reviews/ec2-release-preflight-review.md)를 따른다.
+
+## 배포 확인 순서
+
+1. 2026-11-11 확인: Java main은 `0b9e926`이다. 열린 의존 순서는 #10 → #11 → #12 → #13 → #14이며, 각 초안의 변경·CI를 검토한 후 사용자 병합 결정이 필요하다. 이 진단 추가 PR은 배포용 앱 코드 변경이 아니다. 실제 배포 직전에 승인된 main 커밋과 그 CI를 다시 확인한다. 웹 main은 `f64feb8`이고 공식 자료 화면 #3은 별도 초안이다.
 2. EC2의 영속 디스크와 MySQL 볼륨, 서버 비밀값, HTTPS 주소, 정확한 Origin을 확인한다. 기존 DB가 있으면 먼저 백업과 구조 비교를 수행한다. 새 빈 DB에는 Flyway 초기 스키마를 적용하고 기존 DB에는 자동 baseline을 하지 않는다.
 3. `/actuator/health`는 컨테이너 내부에서 DB·Redis 연결을 확인한다. 외부에서는 HTTPS의 `/api/v1/finance/rooms/QQQ/messages` 공개 읽기와 미인증 POST 거부를 검사한다. HTTP의 308 이동이나 `/healthz` 단독 응답은 회원 서비스 성공이 아니다.
 4. 지정 수신함에서 메일 발송→수신→확인→가입→로그인, 로그인 회원의 QQQ·SPY 작성, 다른 브라우저 조회와 재접속 후 누락 복구를 실제로 확인한다. 실제 수신과 두 브라우저 시험 전에는 회원·채팅 기능을 운영 성공으로 표시하지 않는다.
