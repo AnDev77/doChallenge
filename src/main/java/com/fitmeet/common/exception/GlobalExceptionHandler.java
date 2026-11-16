@@ -14,8 +14,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RateLimitedException.class)
     public ResponseEntity<ApiResponse<Void>> handleRateLimit(RateLimitedException exception) {
         return ResponseEntity.status(429).header("Retry-After", Long.toString(exception.getRetryAfterSeconds()))
-                .body(ApiResponse.error(new ErrorResponse(ErrorCode.AUTH_RATE_LIMITED.getCode(),
-                        ErrorCode.AUTH_RATE_LIMITED.getMessage())));
+                .body(ApiResponse.error(new ErrorResponse(exception.getErrorCode().getCode(),
+                        exception.getErrorCode().getMessage())));
     }
 
     @ExceptionHandler(org.springframework.dao.DataAccessException.class)

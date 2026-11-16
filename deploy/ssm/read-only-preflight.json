@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "2.2",
+  "description": "ShockGraph EC2 probe: reports only fixed presence flags. No input parameters.",
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "readOnlyPreflight",
+      "inputs": {
+        "timeoutSeconds": "30",
+        "runCommand": [
+          "set -eu",
+          "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "deploy_root=/home/ubuntu/doChallenge",
+          "printf '%s\\n' 'probe_version=1'",
+          "if timeout 8s docker info >/dev/null 2>&1; then echo docker_daemon=ok; else echo docker_daemon=unavailable; fi",
+          "if timeout 8s docker compose version >/dev/null 2>&1; then echo docker_compose=ok; else echo docker_compose=unavailable; fi",
+          "if [ -e \"$deploy_root/.git\" ]; then echo checkout=present; else echo checkout=missing; fi",
+          "if [ -f \"$deploy_root/deploy/.env\" ]; then echo deploy_env=present; else echo deploy_env=missing; fi"
+        ]
+      }
+    }
+  ]
+}

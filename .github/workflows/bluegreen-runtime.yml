@@ -29,6 +29,7 @@ jobs:
       - name: 전환·되돌리기 단위 시험과 격리 설정
         run: |
           python3 -m unittest discover -s deploy -p 'test_bluegreen.py'
+          python3 -m unittest discover -s deploy -p 'test_ip_tls_reload.py'
           python3 deploy/prepare_smoke.py
           python3 deploy/bluegreen.py init-blue
           docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml config --quiet
@@ -58,6 +59,13 @@ jobs:
         run: |
           docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml up -d --wait --wait-timeout 360 api-blue
           docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml up -d --wait --wait-timeout 360 api-green nginx nginx-standby
+      - name: IP 인증서 갱신용 HTTP webroot 노출 확인
+        run: |
+          mkdir -p deploy/acme-webroot/.well-known/acme-challenge
+          printf 'synthetic-acme-check' > deploy/acme-webroot/.well-known/acme-challenge/ci-probe
+          test "$(curl --fail --silent http://127.0.0.1/.well-known/acme-challenge/ci-probe)" = 'synthetic-acme-check'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1/.well-known/acme-challenge/no-such-token)" = '404'
+          rm -f deploy/acme-webroot/.well-known/acme-challenge/ci-probe
       - name: 대기 검증·전환·되돌리기·기존 데이터 확인
         run: |
           python3 deploy/bluegreen.py green --env-file deploy/.smoke.env --smoke-program deploy/bluegreen_smoke.py

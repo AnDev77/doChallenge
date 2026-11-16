@@ -1,0 +1,52 @@
+name: EC2 SSM read-only preflight
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ec2-ssm-preflight.yml'
+      - 'deploy/ssm/**'
+      - 'deploy/ssm_probe.py'
+      - 'deploy/test_ssm_probe.py'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Test the probe contract without AWS
+        run: python3 -B -m unittest discover -s deploy -p test_ssm_probe.py -v
+
+  ec2-probe:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ec2-probe
+    concurrency:
+      group: ec2-read-only-preflight
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Obtain temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_SSM_PROBE_ROLE_ARN }}
+          role-session-name: ssm-probe-${{ github.run_id }}
+          role-duration-seconds: 900
+          retry-max-attempts: 3
+      - name: Run the fixed probe and verify the EC2 response
+        env:
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          AWS_SSM_PROBE_DOCUMENT_SHA256: ${{ vars.AWS_SSM_PROBE_DOCUMENT_SHA256 }}
+          AWS_MAX_ATTEMPTS: '2'
+        run: python3 -B deploy/ssm_probe.py

@@ -16,6 +16,8 @@ deploy/.smoke-tls/
 deploy/.smoke-state.json
 deploy/runtime/
 deploy/runtime-standby/
+deploy/acme-webroot/**
+!deploy/acme-webroot/.gitkeep
 
 ### OS ###
 .DS_Store
