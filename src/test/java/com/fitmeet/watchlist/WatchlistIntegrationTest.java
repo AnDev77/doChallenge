@@ -5,6 +5,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,6 +61,36 @@ class WatchlistIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
         mvc.perform(delete("/api/v1/watchlist/QQQ").header("Authorization", "Bearer alice"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test void publicCatalogAndAuthorizedSaveShareTheFiveSymbols() throws Exception {
+        mvc.perform(get("/api/v1/instruments").header("Origin", "http://localhost:5173"))
+                .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(jsonPath("$.data[*].symbol").value(org.hamcrest.Matchers.contains("CAMT", "SPCX", "AVGO", "QQQ", "SPY")))
+                .andExpect(jsonPath("$.data[2].featured").value(true))
+                .andExpect(jsonPath("$.data[2].briefing").value(false))
+                .andExpect(jsonPath("$.data[3].discussion").value(true));
+
+        Long memberId = member();
+        when(tokens.parseAccessToken("catalog-owner")).thenReturn(
+                new AuthenticatedMember(memberId, "owner@invalid.test", com.fitmeet.member.domain.MemberRole.USER));
+        for (String symbol : new String[]{"CAMT", "SPCX", "AVGO"}) {
+            mvc.perform(put("/api/v1/watchlist/" + symbol).header("Authorization", "Bearer catalog-owner"))
+                    .andExpect(status().isOk());
+        }
+        mvc.perform(get("/api/v1/watchlist").header("Authorization", "Bearer catalog-owner"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[*]").value(
+                        org.hamcrest.Matchers.contains("AVGO", "CAMT", "SPCX")));
+
+        for (String method : new String[]{"PUT", "DELETE"}) {
+            mvc.perform(options("/api/v1/watchlist/AVGO").header("Origin", "http://localhost:5173")
+                            .header("Access-Control-Request-Method", method).header("Access-Control-Request-Headers", "Authorization"))
+                    .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+        }
+        mvc.perform(options("/api/v1/watchlist/AVGO").header("Origin", "https://untrusted.invalid")
+                        .header("Access-Control-Request-Method", "PUT").header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/watchlist/AVGO")).andExpect(status().isUnauthorized());
     }
 
     private Long member() {

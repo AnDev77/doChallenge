@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/finance/rooms/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/briefings/*").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/instruments").permitAll()
                         .requestMatchers("/ws", "/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
