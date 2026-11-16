@@ -13,6 +13,9 @@ out/
 __pycache__/
 deploy/.smoke.env
 deploy/.smoke-tls/
+deploy/.smoke-state.json
+deploy/runtime/
+deploy/runtime-standby/
 
 ### OS ###
 .DS_Store

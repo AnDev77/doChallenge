@@ -15,8 +15,9 @@ import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
-BASE = "https://localhost"
+BASE = os.getenv("SHOCKGRAPH_SMOKE_BASE", "https://localhost")
 MAILPIT = "http://127.0.0.1:8025"
 ORIGIN = "https://shockgraph-web.vercel.app"
 TLS = ssl._create_unverified_context()  # Disposable CI certificate only.
@@ -75,7 +76,8 @@ def verification_code() -> str:
 
 class StompSocket:
     def __init__(self, token: str):
-        self.socket = TLS.wrap_socket(socket.create_connection(("127.0.0.1", 443), 10),
+        port = urlparse(BASE).port or 443
+        self.socket = TLS.wrap_socket(socket.create_connection(("127.0.0.1", port), 10),
                                       server_hostname="localhost")
         self.socket.settimeout(10)
         self.reader = self.socket.makefile("rb")
@@ -148,8 +150,12 @@ class StompSocket:
 
 def migrated_schema_version() -> str:
     root = Path(__file__).resolve().parent.parent
+    if os.getenv("SHOCKGRAPH_SMOKE_SKIP_RECREATE") == "1":
+        files = ["deploy/compose.bluegreen.yaml", "deploy/compose.bluegreen.smoke.yaml"]
+    else:
+        files = ["deploy/compose.yaml", "deploy/compose.smoke.yaml"]
     compose = ["docker", "compose", "--env-file", "deploy/.smoke.env",
-               "-f", "deploy/compose.yaml", "-f", "deploy/compose.smoke.yaml"]
+               *(item for path in files for item in ("-f", path))]
     query = ("MYSQL_PWD=\"$MYSQL_ROOT_PASSWORD\" mysql -N -s -uroot \"$MYSQL_DATABASE\" "
              "-e 'SELECT version FROM flyway_schema_history "
              "WHERE success=1 ORDER BY installed_rank DESC LIMIT 1'")
@@ -161,6 +167,18 @@ def migrated_schema_version() -> str:
 def main() -> None:
     if migrated_schema_version() != "1":
         raise AssertionError("initial MySQL migration not recorded")
+    state_path = os.getenv("SHOCKGRAPH_SMOKE_STATE_FILE")
+    if state_path and Path(state_path).is_file():
+        previous = json.loads(Path(state_path).read_text())
+        status, _ = request("/api/v1/auth/login", method="POST",
+                            payload={"email": previous["email"],
+                                     "password": previous["password"]})
+        require(status, 200, "prior member login across colors")
+        status, history = request("/api/v1/finance/rooms/QQQ/messages"
+                                  f"?afterId={previous['first_id']}")
+        require(status, 200, "prior chat across colors")
+        if previous["second_id"] not in [row["id"] for row in history["data"]]:
+            raise AssertionError("prior chat lost across colors")
     email = f"smoke-{uuid.uuid4().hex}@example.invalid"
     password = uuid.uuid4().hex
     status, _ = request("/api/v1/auth/email-verifications/send", method="POST",
@@ -224,6 +242,15 @@ def main() -> None:
             raise AssertionError("QQQ messages leaked into SPY")
     finally:
         reconnected.close()
+
+    if os.getenv("SHOCKGRAPH_SMOKE_SKIP_RECREATE") == "1":
+        if state_path:
+            state = Path(state_path)
+            state.write_text(json.dumps({"email": email, "password": password,
+                                         "first_id": first_id, "second_id": second_id}))
+            state.chmod(0o600)
+        print("PASS: synthetic signup, REST and authenticated STOMP chat through selected proxy")
+        return
 
     # Recreate every container while preserving Compose's named MySQL volume.
     # This exercises the same recovery path a single-host restart uses.
