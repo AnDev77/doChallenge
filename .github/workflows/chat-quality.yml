@@ -41,9 +41,13 @@ jobs:
           finance_repository = next(r for r in roots if r.get('name', '').endswith('FinanceMessageRepositoryTest'))
           assert int(finance_repository.get('tests', 0)) == 2
           assert all(int(finance_repository.get(key, 0)) == 0 for key in ('failures', 'errors', 'skipped'))
+          limiter = next(r for r in roots if r.get('name', '').endswith('RedisFinancePostLimiterIntegrationTest'))
+          assert int(limiter.get('tests', 0)) == 1
+          assert all(int(limiter.get(key, 0)) == 0 for key in ('failures', 'errors', 'skipped'))
           jars = [p for p in glob.glob('build/libs/*.jar') if not p.endswith('-plain.jar')]
           assert len(jars) == 1
           with zipfile.ZipFile(jars[0]) as archive:
             assert 'BOOT-INF/classes/com/fitmeet/financechat/FinanceChatController.class' in archive.namelist()
+            assert 'BOOT-INF/classes/com/fitmeet/financechat/RedisFinancePostLimiter.class' in archive.namelist()
           print(totals)
           PY

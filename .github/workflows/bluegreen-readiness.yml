@@ -1,0 +1,20 @@
+name: Blue Green schema readiness
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-source-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard behavior
+        run: python3 -m unittest discover -s deploy -p 'test_bluegreen_readiness.py' -v
+      - name: EC2 read-only inventory safety
+        run: python3 -m unittest discover -s deploy -p 'test_ec2_preflight.py' -v
+      - name: Enforce versioned schema source contract
+        run: python3 deploy/bluegreen_readiness.py --enforce
