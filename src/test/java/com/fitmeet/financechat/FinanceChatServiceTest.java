@@ -1,6 +1,8 @@
 package com.fitmeet.financechat;
 
 import com.fitmeet.common.exception.BaseException;
+import com.fitmeet.common.exception.ErrorCode;
+import com.fitmeet.common.exception.RateLimitedException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,7 +20,8 @@ import static org.mockito.Mockito.*;
 class FinanceChatServiceTest {
     private final FinanceMessageRepository repo = mock(FinanceMessageRepository.class);
     private final SimpMessagingTemplate broker = mock(SimpMessagingTemplate.class);
-    private final FinanceChatService service = new FinanceChatService(repo, broker);
+    private final FinancePostLimiter limiter = mock(FinancePostLimiter.class);
+    private final FinanceChatService service = new FinanceChatService(repo, broker, limiter);
 
     @AfterEach void cleanup() {
         if (TransactionSynchronizationManager.isSynchronizationActive())
@@ -66,6 +69,7 @@ class FinanceChatServiceTest {
         assertThatThrownBy(() -> service.post("QQQ", 7L, request, "different")).isInstanceOf(BaseException.class);
         verify(repo, never()).saveAndFlush(any());
         verifyNoInteractions(broker);
+        verifyNoInteractions(limiter);
     }
 
     @Test void invalidBodyOrDbFailureNeverSchedulesBroadcast() {
@@ -77,5 +81,21 @@ class FinanceChatServiceTest {
                 .isInstanceOf(IllegalStateException.class);
         assertThat(TransactionSynchronizationManager.getSynchronizations()).isEmpty();
         verifyNoInteractions(broker);
+    }
+
+    @Test void newPostIsLimitedBeforeDatabaseWriteButRetriesDoNotSpendQuota() {
+        UUID request = UUID.randomUUID();
+        when(repo.findBySymbolAndAuthorIdAndRequestId("QQQ", 7L, request.toString())).thenReturn(Optional.empty());
+        doThrow(new RateLimitedException(ErrorCode.CHAT_RATE_LIMITED, 20)).when(limiter).check(7L);
+        assertThatThrownBy(() -> service.post("QQQ", 7L, request, "hello"))
+                .isInstanceOf(RateLimitedException.class);
+        verify(repo, never()).saveAndFlush(any());
+        verifyNoInteractions(broker);
+
+        var prior = new FinanceMessage("QQQ", 7L, request, "hello");
+        when(repo.findBySymbolAndAuthorIdAndRequestId("QQQ", 7L, request.toString()))
+                .thenReturn(Optional.of(prior));
+        assertThat(service.post("QQQ", 7L, request, "hello").content()).isEqualTo("hello");
+        verify(limiter, times(1)).check(7L);
     }
 }
