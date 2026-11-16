@@ -1,4 +1,6 @@
 spring:
+  flyway:
+    enabled: false
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}

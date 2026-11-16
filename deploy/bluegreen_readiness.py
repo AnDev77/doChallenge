@@ -20,14 +20,26 @@ def blockers(root: Path) -> list[str]:
     problems: list[str] = []
     if found != "validate":
         problems.append("production JPA schema mode must be validate; current=" + found)
+    if not re.search(r"(?m)^\s*enabled:\s*true\s*$", prod):
+        problems.append("production Flyway must be enabled")
+    if not re.search(r"(?m)^\s*baseline-on-migrate:\s*false\s*$", prod):
+        problems.append("automatic baseline must be disabled for existing MySQL")
     core = re.search(r"(?m)^\s*(?:implementation|runtimeOnly)\s+['\"]org\.flywaydb:flyway-core", build)
     mysql = re.search(r"(?m)^\s*(?:implementation|runtimeOnly)\s+['\"]org\.flywaydb:flyway-mysql", build)
     if not core or not mysql:
         problems.append("versioned MySQL migration dependency is missing")
-    if not migration_dir.is_dir() or not any(
-        path.read_text().strip() for path in migration_dir.glob("V*__*.sql")
-    ):
+    migration = migration_dir / "V1__initial_schema.sql"
+    if not migration.is_file() or not migration.read_text().strip():
         problems.append("versioned MySQL migration file is missing")
+    else:
+        sql = migration.read_text()
+        required = {"member", "meetup", "meetup_member", "chat_room", "chat_room_read_state",
+                    "chat_message", "finance_chat_message"}
+        found_tables = set(re.findall(r"(?im)^\s*CREATE TABLE\s+([a-z_]+)\s*\(", sql))
+        if not required.issubset(found_tables):
+            problems.append("initial migration is missing application tables")
+        if re.search(r"(?im)^\s*(?:DROP|TRUNCATE)\s+", sql):
+            problems.append("initial migration contains destructive statements")
     return problems
 
 
