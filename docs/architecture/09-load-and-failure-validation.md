@@ -4,7 +4,7 @@
 
 ## 기준 자료와 보완 이유
 
-사용자가 제공한 `SHOCKGRAPH_AI_TOSS_LEARNERS_HIGH_ADOPTION_PLAN(1).md`(2026-10-27 작성, 289줄)를 다시 읽고 [공통 API·모델 확장 설계](08-core-api-and-model-extension.md)와 대조했다. 요약본에 적힌 원자료 페이지 대응을 아래에 사용하며, 이번 작업에서 원본 PDF를 새로 확인했다는 뜻은 아니다. 기존 [배포 후 트러블슈팅 전략 PR #18](https://github.com/AnDev77/doChallenge/pull/18)은 별도 미병합 초안으로 유지하며 내용을 복제하지 않는다.
+사용자가 제공한 [토스 Learner’s High 자료 적용 요약본](../references/toss-learners-high-server-3-adoption-plan.md)(2026-10-27 작성, 289줄)을 [공통 API·모델 확장 설계](08-core-api-and-model-extension.md)와 대조했다. `docs/references/`의 요약본은 당시 제안을 보존하는 참고 문서다. 현재 실행 범위와 시험 기준은 이 계획과 [현재 제품 방향](../current-product-direction.md)을 따른다. 아래 페이지 번호는 요약본의 출처 표기를 따르며, 원본 PDF는 저장소에 포함하지 않았다. 기존 [배포 후 트러블슈팅 전략 PR #18](https://github.com/AnDev77/doChallenge/pull/18)은 별도 미병합 초안이다.
 
 요약본의 핵심은 문제 재현 → 변경 전 측정 → 대안 선택 → 작은 변경 → 같은 조건 재측정 → 복구 검증이다. 앞선 확장 설계는 책임·작업·모델 계약을 정의했지만 실행 가능한 부하 조건과 개선 채택 기준이 부족했다. 이 문서가 그 공백을 보완한다.
 
