@@ -25,6 +25,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: EC2 배포 확인 스크립트 시험
+        run: python3 -B -m unittest discover -s deploy -p "test_*.py" -v
       - name: 회원·채팅 전체 시험과 실행 JAR
         run: bash ./gradlew test bootJar --no-daemon
       - name: Redis 시험·두 기능·실행 JAR 확인
