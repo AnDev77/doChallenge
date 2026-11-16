@@ -1,5 +1,7 @@
 # 금융 서비스 개발 작업 기준
 
+- 최신 제품·역할 경계는 `docs/current-product-direction.md`와 `docs/architecture/08-core-api-and-model-extension.md`를 우선 읽는다. Java는 사용자용 공통 API, Python은 RAG·예측 계산을 소유한다. 미구현 계획과 실제 배포 상태를 구분한다.
+
 - 작업 시작 전에 원격 main·열린 PR의 최신 커밋과 작업 트리 변경을 확인한다. 다른 실행의 미커밋 변경을 덮어쓰지 않는다.
 - 최신 사용자 결정과 `shockgraph-web/docs/daily-work-plan.md`, 최신 중간 평가, 이 저장소의 기능 리뷰를 읽어 하루 작업량을 정한다. 파일명·수정 시각만으로 최신 계획을 추측하지 않고 문서 기준일과 원격 커밋을 확인한다.
 - 일반 구현·시험·기록은 할당 범위까지 계속하고 외부 입력·배포 결정 등 분기점에서만 질문한다.
