@@ -66,7 +66,33 @@ jobs:
           test "$(curl --fail --silent http://127.0.0.1/.well-known/acme-challenge/ci-probe)" = 'synthetic-acme-check'
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1/.well-known/acme-challenge/no-such-token)" = '404'
           rm -f deploy/acme-webroot/.well-known/acme-challenge/ci-probe
-      - name: 대기 검증·전환·되돌리기·기존 데이터 확인
+      - name: 전환 후 검사 실패 주입 및 자동 복귀 검증
+        run: |
+          cat > "$RUNNER_TEMP/bluegreen-failing-smoke" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          deploy/bluegreen_smoke.py
+          if [[ "$SHOCKGRAPH_SMOKE_BASE" == "https://localhost" && "$SHOCKGRAPH_SMOKE_WATCHLIST" == "1" ]]; then
+            exit 73
+          fi
+          SH
+          chmod 700 "$RUNNER_TEMP/bluegreen-failing-smoke"
+          if python3 deploy/bluegreen.py green --env-file deploy/.smoke.env \
+             --smoke-program "$RUNNER_TEMP/bluegreen-failing-smoke" \
+             > "$RUNNER_TEMP/bluegreen-rollback.log" 2>&1; then
+            echo 'FAIL: rejected promotion returned success'
+            exit 1
+          fi
+          grep -q 'previous color restored and its public smoke passed' "$RUNNER_TEMP/bluegreen-rollback.log"
+          grep -Eq '(exit status|returned non-zero exit status) 73' "$RUNNER_TEMP/bluegreen-rollback.log"
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'deploy')
+          import bluegreen
+          assert bluegreen.active_color() == 'blue'
+          print('PASS: automatic rollback verified through the public proxy')
+          PY
+      - name: 대기 검증·정상 전환·수동 복귀·기존 데이터 확인
         run: |
           python3 deploy/bluegreen.py green --env-file deploy/.smoke.env --smoke-program deploy/bluegreen_smoke.py
           python3 deploy/bluegreen.py blue --env-file deploy/.smoke.env --smoke-program deploy/bluegreen_smoke.py
@@ -85,3 +111,4 @@ jobs:
         run: |
           docker compose --env-file deploy/.smoke.env -f deploy/compose.bluegreen.yaml -f deploy/compose.bluegreen.smoke.yaml down -v --remove-orphans || true
           rm -f deploy/.smoke-state.json
+          rm -f "$RUNNER_TEMP/bluegreen-rollback.log" "$RUNNER_TEMP/bluegreen-failing-smoke"
