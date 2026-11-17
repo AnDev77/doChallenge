@@ -21,6 +21,12 @@ server:
 
 app:
   briefing:
+    ingestion:
+      run-once: false
+      user-agent: ${SEC_USER_AGENT:}
+      raw-directory: ${BRIEFING_RAW_DIRECTORY:./data/sec-filings}
+      lookback-days: 30
+      max-filings: 5
     upstream-origin: ${BRIEFING_UPSTREAM_ORIGIN:}
     internal-token: ${BRIEFING_INTERNAL_TOKEN:}
   mail:
