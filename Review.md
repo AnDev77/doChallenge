@@ -89,3 +89,11 @@
 - 중간 검증: [.github/workflows/bluegreen-runtime.yml](.github/workflows/bluegreen-runtime.yml)의 격리 환경에서 Green 공개 스모크 성공 직후 종료 코드 73으로 전환 실패를 주입한다. 복귀 후 같은 스모크가 직전 회원의 재로그인과 QQQ 기록 복구, 새 가입·STOMP, SPY 방 분리를 확인한다. Green에서 공개된 종목 목록이 복귀 후 고정 Blue 이미지에서 401을 반환하는지 추가로 검사해, 실제 라우팅도 확인한다.
 - 확인한 오류와 조치: [첫 원격 실행](https://github.com/AnDev77/doChallenge/actions/runs/44033484826)은 자동 복귀에 성공했지만 같은 컨테이너에서 정상 전환 시험까지 연달아 돌리자 합성 가입이 가입 한도에 걸려 429를 반환했다. 정상·실패 시나리오를 각자의 새 Compose 환경으로 나눈다. 각 환경 안에서는 계속 Blue와 Green이 MySQL·Redis를 공유하며 앱 한도는 바꾸지 않았다.
 - 작업량과 한계: 전환 코드·단위 시험·격리 CI·이 리뷰 등 4개 파일 변경. 로컬 배포 스크립트 전체 37건과 diff 검사 통과. 로컬 Java 시험·JAR은 Gradle 다운로드 네트워크 오류로 시작하지 못했고 Docker 데몬도 없어 격리 Compose는 PR 게이트에서 확인한다. 실제 EC2·SMTP·도메인/TLS·운영 복귀는 미검증이다. 운영 볼륨·트래픽·비밀 설정은 변경하지 않았다.
+
+
+## Java RAG 라이브러리 호환 기반 (2026-11-17)
+
+- 변경: build.gradle의 Spring Boot 3.3.5를 3.5.16으로 올리고 Spring AI BOM 1.1.8과 spring-ai-model 기본 모듈을 추가했다. Gradle 8.5·Java 21은 Spring Boot 3.5 요구 범위 안에 있어 유지했다.
+- 이유: RAG를 Java에서 구현하기 위해 Spring AI 모델 인터페이스를 먼저 연결하고, 회원·채팅·Redis·MySQL·배포 이미지 회귀를 한 번에 확인한다. 외부 LLM 스타터와 API 키 설정은 실제 생성 기능 단계에서 고른다.
+- 추가 기능: 브리핑 화면·API의 사용자 동작 변경 없음. 공시 수집·검색·Kafka 소비는 아직 미구현이다.
+- 검증: Spring 공식 호환 조합(3.5.x/1.1.x)과 Gradle 요구 범위를 확인했다. PR #26의 Boot 3.5.16·Spring AI 1.1.8 변경 커밋에서 Java 전체 시험 2개, JAR·후보 이미지 검증 2개, Compose smoke, Blue/Green, 스키마 게이트가 모두 성공했다. SMTP 실발송과 후보 운영 기동·배포 작업은 조건부 단계여서 생략됐다. 실제 유료 LLM/실 Kafka·운영 배포는 하지 않았다.
