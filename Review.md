@@ -81,3 +81,11 @@
 - 이유: 사용자가 Java에서 RAG를 사용하기로 결정했다. Python #18은 main에 병합됐으나 Java RAG의 완료 증거가 아니다.
 - 추가 기능·흐름: 문서상 Java CAMT 수집 → 검색·LLM 초안 → 검토·조회 → Java Kafka 작업 전달을 확정했다. 실행 코드 변경은 없다.
 - 검증·한계: 세 저장소의 main·PR, Java Gateway와 웹 응답 계약을 확인했다. Java RAG/실 Kafka·LLM·배포는 아직 미검증이다.
+
+
+## Java RAG 라이브러리 호환 기반 (2026-11-17)
+
+- 변경: build.gradle의 Spring Boot 3.3.5를 3.5.16으로 올리고 Spring AI BOM 1.1.8과 spring-ai-model 기본 모듈을 추가했다. Gradle 8.5·Java 21은 Spring Boot 3.5 요구 범위 안에 있어 유지했다.
+- 이유: RAG를 Java에서 구현하기 위해 Spring AI 모델 인터페이스를 먼저 연결하고, 회원·채팅·Redis·MySQL·배포 이미지 회귀를 한 번에 확인한다. 외부 LLM 스타터와 API 키 설정은 실제 생성 기능 단계에서 고른다.
+- 추가 기능: 브리핑 화면·API의 사용자 동작 변경 없음. 공시 수집·검색·Kafka 소비는 아직 미구현이다.
+- 검증: Spring 공식 호환 조합(3.5.x/1.1.x)과 Gradle 요구 범위를 확인했다. 최신 PR의 Java 전체 시험·실행 JAR·Redis·Compose·Blue/Green 게이트 결과를 확인한 뒤 수치를 기록한다. 실제 유료 LLM/실 Kafka·운영 배포는 하지 않는다.
