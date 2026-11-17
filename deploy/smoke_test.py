@@ -148,7 +148,7 @@ class StompSocket:
         self.socket.close()
 
 
-def migrated_schema_version() -> str:
+def migration_versions() -> set[str]:
     root = Path(__file__).resolve().parent.parent
     if os.getenv("SHOCKGRAPH_SMOKE_SKIP_RECREATE") == "1":
         files = ["deploy/compose.bluegreen.yaml", "deploy/compose.bluegreen.smoke.yaml"]
@@ -157,15 +157,15 @@ def migrated_schema_version() -> str:
     compose = ["docker", "compose", "--env-file", "deploy/.smoke.env",
                *(item for path in files for item in ("-f", path))]
     query = ("MYSQL_PWD=\"$MYSQL_ROOT_PASSWORD\" mysql -N -s -uroot \"$MYSQL_DATABASE\" "
-             "-e 'SELECT version FROM flyway_schema_history "
-             "WHERE success=1 ORDER BY installed_rank DESC LIMIT 1'")
+             "-e 'SELECT version FROM flyway_schema_history WHERE success=1'")
     result = subprocess.run(compose + ["exec", "-T", "mysql", "sh", "-c", query],
                             cwd=root, check=True, capture_output=True, text=True)
-    return result.stdout.strip()
+    return set(result.stdout.splitlines())
 
 
 def main() -> None:
-    if migrated_schema_version() != "2":
+    initial_migrations = migration_versions()
+    if "2" not in initial_migrations:
         raise AssertionError("member watchlist migration not recorded")
     state_path = os.getenv("SHOCKGRAPH_SMOKE_STATE_FILE")
     if state_path and Path(state_path).is_file():
@@ -285,7 +285,7 @@ def main() -> None:
     subprocess.run(compose + ["down", "--remove-orphans"], cwd=root, check=True)
     subprocess.run(compose + ["up", "-d", "--wait", "--wait-timeout", "360"],
                    cwd=root, check=True)
-    if migrated_schema_version() != "2":
+    if migration_versions() != initial_migrations:
         raise AssertionError("MySQL migration history changed after recreation")
     status, _ = request("/api/v1/auth/login", method="POST",
                         payload={"email": email, "password": password})
