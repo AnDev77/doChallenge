@@ -85,6 +85,9 @@ jobs:
           fi
           grep -q 'previous color restored and its public smoke passed' "$RUNNER_TEMP/bluegreen-rollback.log"
           grep -Eq '(exit status|returned non-zero exit status) 73' "$RUNNER_TEMP/bluegreen-rollback.log"
+          # The Green smoke requires this catalog to return 200. The pinned
+          # Blue image has no public catalog and returns 401 without a token.
+          test "$(curl -ksS --max-time 5 -o /dev/null -w '%{http_code}' https://localhost/api/v1/instruments)" = '401'
           python3 - <<'PY'
           import sys
           sys.path.insert(0, 'deploy')
