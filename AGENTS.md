@@ -1,6 +1,6 @@
 # 금융 서비스 개발 작업 기준
 
-- 최신 제품·역할 경계는 `docs/current-product-direction.md`와 `docs/architecture/08-core-api-and-model-extension.md`를 우선 읽는다. Java는 사용자용 공통 API, Python은 RAG·예측 계산을 소유한다. 미구현 계획과 실제 배포 상태를 구분한다.
+- 최신 제품·역할 경계는 `docs/current-product-direction.md`와 `docs/architecture/08-core-api-and-model-extension.md`를 우선 읽는다. Java는 사용자용 공통 API·공시 수집·RAG·Kafka 초안 작업을 소유한다. Python은 예측·가격 연구를 소유한다. 미구현 계획과 실제 배포 상태를 구분한다.
 - 성능·확장 작업은 `docs/architecture/09-load-and-failure-validation.md`에 따라 기준선→한 가지 개선→같은 조건 재측정→복구를 기록한다. HTTP 성공과 실제 결과 성공, 단위 시험과 부하 검증을 구분한다. 원자료의 과거 Kafka 금지는 최신 사용자 허용 결정을 덮어쓰지 않는다.
 
 - 작업 시작 전에 원격 main·열린 PR의 최신 커밋과 작업 트리 변경을 확인한다. 다른 실행의 미커밋 변경을 덮어쓰지 않는다.
@@ -11,6 +11,9 @@
 - Java는 회원·관심 목록·종목방을 소유한다. 운동 모임의 참가 정책을 금융 종목방에 그대로 적용하지 않는다.
 - 변경 후 Java 21 전체 시험·실행 JAR·원격 PR 게이트를 확인한다. 실제 Redis 시험의 생략은 성공으로 세지 않는다.
 - 메일 주소·코드·가입 증표·JWT·SMTP 비밀값을 로그/문서에 남기지 않는다. 실메일 발송 시험은 사용자가 지정한 수신처와 발송 설정이 있을 때만 수행한다.
+- 현재 BriefingGateway는 Python 조회를 중계하는 이전 구현이다. Java RAG 및 Kafka 소비는 이후 기능이다.
 - 기능 리뷰에 작업량, 오류, 수정, 실제로 검증하지 못한 범위를 기록한다. 초안 PR은 자동 병합·배포하지 않는다.
 
 - 배포 인수 이후의 운영 검증·장애 대응·성능 개선은 `docs/operations/post-deployment-troubleshooting-strategy.md`를 읽고 기준 측정→재현→원인 확인→변경→동일 조건 재검증 순으로 진행한다. 계획된 장애 실험과 실제 운영 사고를 구분하고 운영 장애 주입은 별도 승인 없이 실행하지 않는다.
+
+- 모든 기능의 Review.md에는 바뀐 파일·구조, 설계 선택 이유, 추가된 기능, 사용자 요청에서 달라진 점, 시험 결과와 미검증 범위를 명시한다. 기능별 리뷰가 따로 있더라도 Review.md에서 경로를 찾을 수 있게 한다.

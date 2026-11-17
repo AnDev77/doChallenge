@@ -64,3 +64,20 @@
 - 중간: 브리핑·관심 목록 시험 및 JAR 클래스 검사를 모두 남겼고, 브리핑과 대표 종목 GET만 익명 조회하도록 합쳤다. 기존 브리핑 기록과 이번 기능 기록을 함께 보존했다.
 - 완료 근거: 로컬 충돌 표식 제거, `git diff --cached --check`, `python3 -m py_compile deploy/smoke_test.py`를 확인했다. 변경 파일 9개이며 최신 main과 합친 새 커밋의 Java·Redis·Docker CI는 별도로 확인해야 한다.
 - 한계: 로컬 Gradle 배포 파일 다운로드가 네트워크에서 차단돼 Java 전체 시험·JAR을 로컬에서 다시 만들지 못했다. 운영 MySQL, 실제 사용자 채팅, SMTP, EC2 Blue/Green 전환은 이번 병합 검증에 포함되지 않는다.
+
+
+## RAG Kafka 경계와 기능 리뷰 규칙
+
+2026-11-17 KST. Python 초안 PR #18의 RAG 작업 Kafka 전달 실험을 Java 제품 경계에 반영한다. 이 문서 변경은 Java 코드, 배포 설정 또는 실행 동작을 바꾸지 않는다.
+
+- 바뀐 파일과 구조: docs/current-product-direction.md는 Kafka를 Python 내부의 CAMT 요약 초안 작업 전달 실험에만 배치한다. Java BriefingGateway와 공개 GET은 검토된 결과만 조회한다. AGENTS.md는 앞으로의 Review.md에 바뀐 파일·구조·선택 이유·추가 기능·시험·한계를 적도록 정한다.
+- 이유: Java 회원·채팅 요청과 외부 LLM·공시 원문 경계를 보존하고, Kafka 도입이 실제 브리핑 운영 연결이나 예측 성능 입증으로 오해되지 않게 한다.
+- 시작·중간·완료: Python PR #18이 초안이고 Java main의 브리핑 GET이 읽기 전용임을 확인했다. 기존 예측 작업 설계의 브로커 미도입 단계와 이번 RAG 실험을 구분했다. 문서 변경만 제안하며 Java 실행 코드 시험·실 Kafka/LLM 연결·EC2 배포는 수행하지 않았다. 원격 PR 게이트는 새 커밋에서 확인한다.
+
+
+## Java RAG 소유권 변경 (2026-11-17)
+
+- 변경 파일·구조: AGENTS.md, 현재 제품 방향, 아키텍처 설계의 최상단 결정을 Java RAG·Kafka 담당으로 바꿨다. 하단 과거 Python 설계는 이력임을 명시했다.
+- 이유: 사용자가 Java에서 RAG를 사용하기로 결정했다. Python #18은 main에 병합됐으나 Java RAG의 완료 증거가 아니다.
+- 추가 기능·흐름: 문서상 Java CAMT 수집 → 검색·LLM 초안 → 검토·조회 → Java Kafka 작업 전달을 확정했다. 실행 코드 변경은 없다.
+- 검증·한계: 세 저장소의 main·PR, Java Gateway와 웹 응답 계약을 확인했다. Java RAG/실 Kafka·LLM·배포는 아직 미검증이다.
