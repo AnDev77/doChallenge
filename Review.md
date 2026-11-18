@@ -116,3 +116,43 @@
 - 추가된 기능과 경계: 검증된 다른 발행자 항목을 설정으로 추가해 같은 원문 저장·청크 경로를 재사용할 수 있다. 새 종목의 브리핑 공개, PDF·XBRL 처리, 종목별 인용 검증은 여전히 별도 작업이다. 코드 위치와 설정 예시는 [수집 흐름 설명](docs/briefing/java-camt-ingestion.md)에 정리했다.
 - 검증: `application.yml`의 실제 CAMT 설정 바인딩, 서로 다른 CIK·서식·종목을 사용하는 두 발행자 선택, 잘못된 발행자 응답과 위험한 종목명 거절, 같은 accession·해시의 종목별 DB 격리를 시험에 추가했다. 최신 커밋의 원격 CI 결과는 별도로 확인한다.
 - 최신 통합 게이트: `560a6e3`(main #27 병합 포함)에서 Java 전체 시험 2개, JAR·후보 이미지 검증 2개, Compose 스모크, 스키마 게이트, Blue/Green 정상 전환과 실패 주입 후 자동 복귀가 모두 성공했다. 후보 운영 기동·실 SMTP·배포는 실행 조건이 없어 건너뛰었다. 실제 SEC→Java→MySQL 원문 저장과 운영 영속 볼륨은 아직 미검증이다.
+# Java 공시 키워드 검색 기준선 (2026-11-18)
+
+## 시작 상태, 범위, 코드 위치
+
+- 시작: Java main `97d4248`, SEC 수집 #28 head `2a42be2`에서 별도 브랜치를 만들었다. 이후 #28은 main `2f8704e`로 병합됐다. 기존의 다른 로컬 작업 트리와 미커밋 변경은 건드리지 않았다. 웹 11/16 주간 계획과 Java 11/17 제품 방향을 읽었지만, 그 계획의 11/18 공개 브리핑 목표가 달성됐다는 뜻은 아니다.
+- 변경 파일: [SecIngestionRunner](src/main/java/com/fitmeet/briefing/ingestion/SecIngestionRunner.java), [KeywordReadinessService](src/main/java/com/fitmeet/briefing/retrieval/KeywordReadinessService.java), [EvidenceRetriever](src/main/java/com/fitmeet/briefing/retrieval/EvidenceRetriever.java), [검색·롤백 시험](src/test/java/com/fitmeet/briefing/retrieval/EvidenceRetrieverTest.java), [더 자세한 SQL·시각 설명](docs/briefing/java-keyword-retrieval.md), 이 Review.md. 새 마이그레이션·서버·공개 API는 없다.
+- 추가 기능은 **내부 근거 후보 검색**이다. 브리핑 생성 코드가 아직 `EvidenceRetriever`를 호출하지 않으며 공개 GET은 `BriefingGateway` → Python 조회를 유지한다. 임베딩·LLM·검토·Kafka는 지금 실행되지 않는다.
+
+## 호출 흐름: 원문 저장부터 검색 후보까지
+
+1. `run-once=true`에서만 `SecIngestionRunner.run`이 `FilingIngestionService.collect`를 호출한다. SEC 제출 목록과 HTML을 검증하고 `FilingChunker`가 본문을 청크로 나눈다.
+2. `RawFilingStore`가 원본 바이트를 SHA-256 파일에 보존한다. `FilingDocumentRepository.save`는 MySQL의 `rag_document`와 `rag_chunk`를 **한 DB 트랜잭션**에서 넣는다. 처음에는 `index_status='PENDING'`이다. 원본 파일 저장은 MySQL 트랜잭션 밖이므로 DB 실패 시 파일만 남을 수 있다.
+3. 수집이 끝나면 실행기가 `KeywordReadinessService.markPendingReady(100)`을 반복한다. 청크 확인에 성공한 문서만 `KEYWORD_READY`가 된다. 이는 검색 가능 상태이지 벡터 임베딩 완료 상태가 아니다.
+4. 다음 생성 단계에서 `EvidenceRetriever.search(symbol, query, asOf, lookbackDays, topK)`가 호출되면, 이번 단계의 SQL은 종목·시각·최신 원문 버전을 먼저 제한하고 최대 512개 키워드 일치 청크를 가져온다. Java가 일치 단어 수 등으로 정렬해 최대 8개 근거를 반환한다. 현재 이 마지막 호출자는 미구현이다.
+
+## ① 시점 격리와 버전 숨김: 어떤 행이 왜 빠지는가
+
+`accepted_at`은 SEC에 제출된 시각, `fetched_at`은 우리 DB에 수집된 시각이다. 예를 들어 17일 23:00 UTC에 접수됐지만 18일 01:00에 수집했다면 `asOf=17일 23:30` 검색에서는 **접수 시각 조건은 통과해도 수집 시각 조건에서 제외**된다. `accepted_at BETWEEN asOf-lookback AND asOf`와 `fetched_at <= asOf`를 둘 다 확인해야 우리 시스템의 과거 기록에 아직 없던 문서를 소급해서 쓰지 않는다. 이 조건은 시장 전체의 정보 이용 가능 시각까지 증명하지는 않는다.
+
+동일 `symbol + accession + document_name`의 원문 바이트가 달라지면 `raw_sha256`이 다른 새 문서 행이다. SQL의 `NOT EXISTS`는 `asOf`까지 수집된 더 최신 행이 있으면 구버전을 제외한다. **최신 행의 `index_status`는 조건에 넣지 않는다.** 따라서 구버전은 `KEYWORD_READY`, 최신은 `PENDING`인 순간에도 구버전은 숨겨진다. 새 버전 준비 동안 근거가 비는 대신 교체된 원문을 현재 근거로 쓰지 않는 선택이다. 과거 `asOf`가 새 버전의 `fetched_at` 이전이면 당시 구버전은 계속 검색될 수 있다.
+
+여기서 말하는 새 버전은 **같은 accession·파일명에서 원문 바이트가 바뀐 사례**다. SEC의 공식 `6-K/A` 수정 공시는 보통 **새 accession**이므로 이 SQL이 앞선 제출을 자동으로 숨기지 않는다. 공식 수정 관계 탐지와 대체 정책은 아직 없다. 반환한 `documentId`, `chunkId`, URL·해시·시각은 버전 추적에 쓰지만 **근거와 문장 사이의 의미 검증이나 LLM 환각 방지는 아직 구현하지 않았다.**
+
+## ② 무결성 검사와 트랜잭션: 실패가 어디까지 되돌아가는가
+
+`markPendingReady`는 `PENDING` 최대 100건의 ID를 읽고 문서마다 `rag_chunk`를 `ordinal_no` 순서로 가져온다. `1~1,000개`, `0부터 빈틈없는 순서`, `공백 아닌 본문`, `1,500자 이하`, `SHA-256(UTF-8 본문) == text_sha256`을 검사한 뒤에만 상태를 바꾼다. **저장된 원래 길이와 비교하는 검사는 없다.** 길이는 1,500자 상한만 확인한다.
+
+`@Transactional`은 Spring 빈을 실행기에서 호출하는 **각 `markPendingReady(100)` 배치**에 적용된다. 첫 문서가 준비돼도 두 번째 문서에서 손상이 발견돼 `IllegalStateException`이 나면 해당 배치의 첫 상태 변경도 롤백된다. 이전에 성공한 배치, 수집기의 별도 `save` 트랜잭션, 파일 시스템 저장은 롤백 대상이 아니다. 재실행은 `PENDING` 문서를 다시 검사하지만 **손상을 자동 복구하지는 않는다.** 계속 실패하면 운영자가 원인을 조사해야 한다.
+
+## ③ 후보 512건과 순위: 부하에 대한 정확한 주장
+
+검색어의 문자·숫자 단어를 최대 8개 추출해 `LOWER(c.section_text) LIKE '%word%'`의 **바인딩 인자**로 넣는다. SQL이 종목·기간·버전 조건과 OR 키워드 일치를 평가하고 **최근 접수순으로 정렬한 결과 중 최대 512행을 Java에 반환**한다. Java는 그 후보의 *서로 다른 검색 단어 일치 개수* → 접수 시각 → 문서 ID → 청크 순서로 정렬한 뒤 `topK`(최대 8)를 선택한다.
+
+`LIMIT 512`는 결과 전송과 Java 정렬 건수의 상한이다. `%word%`와 `LOWER(column)`의 **MySQL 전체 스캔을 막거나 DB 쿼리 비용을 고정하지 않는다.** 최신 청크가 512개를 채우면 오래됐지만 관련성 높은 청크는 아예 순위 계산에 못 들어온다. 부분 문자열 매칭·영문 공시와 한국어 질문의 표현 차이도 해결하지 못한다. 규모와 검색 품질은 실제 MySQL 쿼리 플랜·지연과 고정 평가 세트로 측정한 뒤 인덱스/임베딩과 비교한다.
+
+## 검증 결과와 남은 위험
+
+- V3 스키마를 H2 MySQL 모드에 적용한 시험에 종목 분리, 접수·수집 시간 경계, 같은 파일의 두 원문 버전과 최신 `PENDING` 숨김, 손상 해시, 순위를 넣었다. 이번 수정에서는 **Spring 트랜잭션 프록시를 실제로 띄워** 첫 문서 상태 업데이트 뒤 다음 문서 검사 실패 시 두 상태가 `PENDING`인 사례를 추가했다.
+- 로컬 `bash gradlew test bootJar --no-daemon`은 Gradle 8.5 배포 파일을 받지 못해 테스트 자체가 시작되지 않았다. `git diff --check`는 통과했다. PR #29의 코드 커밋 `0bdbdc6`에서 Java 21 전체 시험과 실행 JAR 검증 2개, Compose 스모크, Blue/Green 정상·복귀, 스키마 게이트, 이메일 가입 검사가 모두 성공했다. `chat-quality.yml`의 `test` 작업은 `gradlew test bootJar`를 실행하므로 위 롤백 시험도 자동 시험 집합에 포함된다. 후보 이미지 게시·운영 기동·실 SMTP는 조건부 작업으로 건너뛰었다. **이번 기록 커밋의 CI는 별도 확인한다.**
+- 실 MySQL의 쿼리 플랜·지연, 실제 SEC→MySQL 수집, 원본 파일 재확인, 30건 검색 평가, 임베딩 비교, LLM 호출·출처 의미 검증, 검토·공개 결과, Kafka와 운영 배포는 아직 미검증/미구현이다. 다음 기능은 검색 기준선의 CI 검증 후 동일 문서에서 임베딩과 비교하고 근거 ID에 묶인 초안·사람 검토를 만드는 것이다. 모델·키·호출 예산이 없으면 유료 LLM 실제 호출은 완료로 세지 않는다.
