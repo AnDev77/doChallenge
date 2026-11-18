@@ -46,15 +46,38 @@ class BlueGreenTest(unittest.TestCase):
     def test_public_smoke_failure_restores_previous_color(self):
         calls = []
         def fake_smoke(program, *, standby, target):
-            calls.append(standby)
-            self.assertEqual(target, "green")
+            calls.append((standby, target))
+            if not standby and target == "green":
+                raise subprocess.CalledProcessError(1, program)
+        with patch.object(bluegreen, "compose"), patch.object(bluegreen, "smoke", side_effect=fake_smoke):
+            with self.assertRaisesRegex(RuntimeError, "public smoke passed"):
+                bluegreen.switch("green", "test.env", "smoke")
+        self.assertEqual(calls, [(True, "green"), (False, "green"), (False, "blue")])
+        self.assertEqual(bluegreen.active_color(), "blue")
+
+    def test_rollback_smoke_failure_is_reported_as_unverified(self):
+        def fake_smoke(program, *, standby, target):
             if not standby:
                 raise subprocess.CalledProcessError(1, program)
         with patch.object(bluegreen, "compose"), patch.object(bluegreen, "smoke", side_effect=fake_smoke):
-            with self.assertRaises(subprocess.CalledProcessError):
+            with self.assertRaisesRegex(RuntimeError, "rollback could not be verified"):
                 bluegreen.switch("green", "test.env", "smoke")
-        self.assertEqual(calls, [True, False])
+
+    def test_partial_route_write_failure_restores_both_routes(self):
+        write = bluegreen.write_upstream
+
+        def fake_write(color):
+            if color == "green":
+                bluegreen.UPSTREAM.write_text(bluegreen.upstream("green"))
+                raise OSError("standby route write failed")
+            write(color)
+
+        with patch.object(bluegreen, "compose"), patch.object(bluegreen, "smoke") as smoke, \
+             patch.object(bluegreen, "write_upstream", side_effect=fake_write):
+            with self.assertRaisesRegex(RuntimeError, "public smoke passed"):
+                bluegreen.switch("green", "test.env", "smoke")
         self.assertEqual(bluegreen.active_color(), "blue")
+        self.assertEqual(smoke.call_args.kwargs, {"standby": False, "target": "blue"})
 
     def test_invalid_active_file_blocks_switch(self):
         bluegreen.UPSTREAM.write_text("server untrusted;\n")
