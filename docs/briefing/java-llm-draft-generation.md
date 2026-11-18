@@ -12,7 +12,7 @@
 
 ## 모델 연결과 비용 경계
 
-`build.gradle`에 Spring AI 1.1.8 BOM의 OpenAI 모델 스타터를 추가했다. 기본 `BRIEFING_CHAT_PROVIDER=none`, 임베딩 `none`이라 앱 기동·사용자 GET이 유료 호출을 하지 않는다. 운영자가 별도 작업 환경에 `BRIEFING_CHAT_PROVIDER=openai`, `OPENAI_API_KEY`, `BRIEFING_CHAT_MODEL`을 설정해야 ChatModel이 생성된다. 모델 기본 식별자는 `gpt-5-mini`, 최대 생성 토큰 설정값은 `1024`로 두되 실제 모델·비용 상한과 계정 설정을 승인받은 환경에서 시험해야 한다. 키는 문서·Git·로그에 넣지 않는다. 이 서비스는 아직 호출 엔드포인트가 없어 환경 변수만 설정해도 생성 작업은 시작되지 않는다.
+`build.gradle`에 Spring AI 1.1.8 BOM의 OpenAI 모델 스타터를 추가했다. 기본 `BRIEFING_CHAT_PROVIDER=none`, 임베딩·이미지·모더레이션·오디오 모델 `none`이라 앱 기동·사용자 GET이 유료 호출을 하지 않는다. 운영자가 별도 작업 환경에 `BRIEFING_CHAT_PROVIDER=openai`, `OPENAI_API_KEY`, `BRIEFING_CHAT_MODEL`을 설정해야 ChatModel이 생성된다. 모델 기본 식별자는 `gpt-5-mini`, 최대 생성 토큰 설정값은 `1024`로 두되 실제 모델·비용 상한과 계정 설정을 승인받은 환경에서 시험해야 한다. 키는 문서·Git·로그에 넣지 않는다. 이 서비스는 아직 호출 엔드포인트가 없어 환경 변수만 설정해도 생성 작업은 시작되지 않는다.
 
 모델 응답 크기, 입력 최대 청크 8개·청크당 1,500자, 검색어 256자 제한은 예상 호출량의 상한을 낮춘다. 실제 과금·토큰 사용량·모델 지연은 호출을 실행하고 계정 사용량을 확인하기 전까지 알 수 없다. 프로바이더 타임아웃/재시도 정책도 실제 모델 연결 인수 전에 검증해야 한다.
 
