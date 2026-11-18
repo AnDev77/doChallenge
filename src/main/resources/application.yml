@@ -27,6 +27,10 @@ app:
       raw-directory: ${BRIEFING_RAW_DIRECTORY:./data/sec-filings}
       lookback-days: 30
       max-filings: 5
+      issuers:
+        - symbol: CAMT
+          cik: '0001109138'
+          forms: [6-K, 6-K/A, 20-F, 20-F/A]
     upstream-origin: ${BRIEFING_UPSTREAM_ORIGIN:}
     internal-token: ${BRIEFING_INTERNAL_TOKEN:}
   mail:

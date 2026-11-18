@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Component
 public class SecClient {
     private static final int MAX_BYTES = 4_000_000;
-    private static final URI SUBMISSIONS = URI.create("https://data.sec.gov/submissions/CIK0001109138.json");
     private final HttpClient client;
     private final ObjectMapper mapper;
 
@@ -30,8 +29,9 @@ public class SecClient {
         this.client = client;
     }
 
-    public JsonNode submissions(String userAgent) throws IOException, InterruptedException {
-        return mapper.readTree(download(SUBMISSIONS, "application/json", userAgent));
+    public JsonNode submissions(SecIssuer issuer, String userAgent) throws IOException, InterruptedException {
+        URI submissions = URI.create("https://data.sec.gov/submissions/CIK" + issuer.cik() + ".json");
+        return mapper.readTree(download(submissions, "application/json", userAgent));
     }
 
     public byte[] document(SecFiling filing, String userAgent) throws IOException, InterruptedException {

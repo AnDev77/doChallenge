@@ -100,3 +100,10 @@
 - 테스트·한계: 카탈로그의 발행자/열 길이/정정·기간 선택, 표의 단위·숨겨진 텍스트, H2 MySQL 모드에서 V3 적용·원문 두 버전·중복 저장 시험을 추가했다. `git diff --check` 통과. 로컬 Gradle 8.5 다운로드는 네트워크 차단으로 실패해 Java 테스트와 실행 JAR 결과는 PR CI에서 확인한다. 유효한 SEC 연락처·운영 영속 볼륨·실 MySQL이 제공되지 않아 Java 수집기의 실제 쓰기 종단 시험은 미완료다. 검색·LLM·검토·Kafka·공개 조회 전환도 미구현이며 이번 단계의 성공으로 기록하지 않는다.
 - PR 게이트 첫 실행: Java 시험 2개와 스키마 소스 게이트가 통과했다. Compose는 앱이 기동하고 JAR을 빌드했지만 기존 `deploy/smoke_test.py`가 최신 Flyway 버전을 2로 고정해 V3 도입을 실패로 판단했다. V2 적용 여부와 컨테이너 재생성 전후의 전체 성공 마이그레이션 집합을 검사하도록 고쳤다. 새 커밋에서 Compose·Blue/Green 재검증한다.
 - 최신 PR 게이트: 수정 커밋 `d1e2b7b`에서 Java 전체 시험 2개, JAR 검증 2개, Compose 스모크, Blue/Green, 스키마 게이트가 모두 성공했다. SMTP 실발송·후보 운영 기동·배포는 조건부 건너뜀이다. SEC 제출 목록과 HTML은 읽기 전용으로만 확인했으며 Java 수집기로 실제 SEC→MySQL 쓰기를 검증한 것은 아니다.
+
+### 종목별 SEC 발행자 설정으로 수정
+
+- 사용자 지적: 첫 버전에는 CAMT 티커·CIK·6-K/20-F 서식이 `SecClient`, 목록 선택, 파일 URL, DB 저장에 반복 고정돼 있었다. 다음 종목마다 코드를 복사해야 하는 구조였다.
+- 변경: `application.yml`의 `issuers` 목록에서 CAMT를 첫 설정값으로 두고 `SecIssuer`가 티커·10자리 CIK·허용 서식을 검증한다. `SecIngestionRunner`와 `FilingIngestionService`가 목록을 순회한다. `SecClient`는 설정 CIK로 SEC 주소를 만들고 `SecFilingCatalog`는 응답의 CIK와 티커를 모두 대조한다. `FilingDocumentRepository`는 해당 발행자 정보를 문서별로 저장한다. 임의 응답 URL을 따라가지 않는다.
+- 추가된 기능과 경계: 검증된 다른 발행자 항목을 설정으로 추가해 같은 원문 저장·청크 경로를 재사용할 수 있다. 새 종목의 브리핑 공개, PDF·XBRL 처리, 종목별 인용 검증은 여전히 별도 작업이다. 코드 위치와 설정 예시는 [수집 흐름 설명](docs/briefing/java-camt-ingestion.md)에 정리했다.
+- 검증: `application.yml`의 실제 CAMT 설정 바인딩, 서로 다른 CIK·서식·종목을 사용하는 두 발행자 선택, 잘못된 발행자 응답과 위험한 종목명 거절, 같은 accession·해시의 종목별 DB 격리를 시험에 추가했다. 최신 커밋의 원격 CI 결과는 별도로 확인한다.

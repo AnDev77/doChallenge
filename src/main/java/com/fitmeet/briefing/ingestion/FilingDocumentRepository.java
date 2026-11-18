@@ -25,7 +25,7 @@ public class FilingDocumentRepository {
     @Transactional
     public boolean save(SecFiling filing, Instant fetchedAt, RawFilingStore.StoredRaw raw, List<String> chunks) {
         String exists = "SELECT COUNT(*) FROM rag_document WHERE symbol=? AND accession=? AND document_name=? AND raw_sha256=?";
-        if (jdbc.queryForObject(exists, Integer.class, SecFiling.SYMBOL, filing.accession(),
+        if (jdbc.queryForObject(exists, Integer.class, filing.issuer().symbol(), filing.accession(),
                 filing.documentName(), raw.sha256()) != 0) return false;
         var keys = new GeneratedKeyHolder();
         try {
@@ -35,8 +35,8 @@ public class FilingDocumentRepository {
                         source_url, accepted_at, fetched_at, raw_sha256, raw_storage_key, parser_version,
                         chunk_version, index_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                         """, java.sql.Statement.RETURN_GENERATED_KEYS);
-                statement.setString(1, SecFiling.SYMBOL);
-                statement.setString(2, SecFiling.CIK);
+                statement.setString(1, filing.issuer().symbol());
+                statement.setString(2, filing.issuer().cik());
                 statement.setString(3, filing.accession());
                 statement.setString(4, filing.form());
                 statement.setString(5, filing.documentName());
