@@ -3,6 +3,11 @@ spring:
     model:
       chat: ${BRIEFING_CHAT_PROVIDER:none}
       embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
     openai:
       api-key: ${OPENAI_API_KEY:}
       chat:
