@@ -16,14 +16,21 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 class EvidenceRetrieverTest {
     @TempDir Path directory;
     private JdbcTemplate jdbc;
+    private DriverManagerDataSource dataSource;
     private FilingDocumentRepository documents;
     private KeywordReadinessService readiness;
     private EvidenceRetriever retriever;
@@ -31,12 +38,12 @@ class EvidenceRetrieverTest {
 
     @BeforeEach
     void setup() {
-        var source = new DriverManagerDataSource(
+        dataSource = new DriverManagerDataSource(
                 "jdbc:h2:mem:retrieval-" + UUID.randomUUID() + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
                 "sa", "");
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V3__rag_source_documents.sql"))
-                .execute(source);
-        jdbc = new JdbcTemplate(source);
+                .execute(dataSource);
+        jdbc = new JdbcTemplate(dataSource);
         documents = new FilingDocumentRepository(jdbc);
         readiness = new KeywordReadinessService(jdbc);
         retriever = new EvidenceRetriever(jdbc);
@@ -92,6 +99,30 @@ class EvidenceRetrieverTest {
     }
 
     @Test
+    void springTransactionalBatchRollsBackEarlierReadyUpdatesOnLaterCorruption() throws Exception {
+        save("CAMT", "0001109138", "0001109138-26-000006", "2026-11-17T12:00:00Z",
+                "2026-11-17T12:05:00Z", "first valid revenue chunk");
+        save("CAMT", "0001109138", "0001109138-26-000007", "2026-11-17T12:00:00Z",
+                "2026-11-17T12:06:00Z", "second damaged revenue chunk");
+        jdbc.update("UPDATE rag_chunk SET text_sha256=? WHERE document_id=(SELECT MAX(id) FROM rag_document)",
+                "0".repeat(64));
+
+        try (var context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(DriverManagerDataSource.class, () -> dataSource);
+            context.register(TransactionalReadinessConfig.class);
+            context.refresh();
+            var proxiedService = context.getBean(KeywordReadinessService.class);
+            assertThatThrownBy(() -> proxiedService.markPendingReady(10))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM rag_document WHERE index_status='KEYWORD_READY'",
+                Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM rag_document WHERE index_status='PENDING'",
+                Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM rag_chunk", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
     void ranksMatchingTermsAndKeepsStableEvidenceIds() throws Exception {
         save("CAMT", "0001109138", "0001109138-26-000005", "2026-11-17T12:00:00Z",
                 "2026-11-17T12:05:00Z", "revenue and guidance", "revenue only");
@@ -110,5 +141,22 @@ class EvidenceRetrieverTest {
         var raw = new RawFilingStore().save(directory,
                 String.join(" ", chunks).getBytes(StandardCharsets.UTF_8));
         assertThat(documents.save(filing, Instant.parse(fetched), raw, List.of(chunks))).isTrue();
+    }
+
+    @Configuration
+    @EnableTransactionManagement
+    static class TransactionalReadinessConfig {
+        @Bean
+        JdbcTemplate jdbcTemplate(DriverManagerDataSource source) { return new JdbcTemplate(source); }
+
+        @Bean
+        PlatformTransactionManager transactionManager(DriverManagerDataSource source) {
+            return new DataSourceTransactionManager(source);
+        }
+
+        @Bean
+        KeywordReadinessService keywordReadinessService(JdbcTemplate jdbcTemplate) {
+            return new KeywordReadinessService(jdbcTemplate);
+        }
     }
 }
