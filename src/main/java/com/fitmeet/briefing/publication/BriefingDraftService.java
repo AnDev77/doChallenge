@@ -26,16 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class BriefingDraftService {
     private final JdbcTemplate jdbc;
     private final EvidenceRetriever retriever;
-    private final Clock clock;
+    private final Clock clock = Clock.systemUTC();
 
     public BriefingDraftService(JdbcTemplate jdbc, EvidenceRetriever retriever) {
-        this(jdbc, retriever, Clock.systemUTC());
-    }
-
-    BriefingDraftService(JdbcTemplate jdbc, EvidenceRetriever retriever, Clock clock) {
         this.jdbc = jdbc;
         this.retriever = retriever;
-        this.clock = clock;
     }
 
     /** Select citations only from the same bounded, as-of retrieval that supplied the draft. */
