@@ -68,4 +68,4 @@ AND NOT EXISTS (
 
 ## 4. 검증 상태와 다음 단계
 
-`EvidenceRetrieverTest`는 V3 스키마의 H2 MySQL 모드에서 종목 분리, 접수·수집 시간 경계, 같은 파일의 두 원문 버전, 최신 `PENDING` 시 구버전 숨김, 해시 손상, 검색 순위와 근거 ID를 검사한다. 추가 테스트는 Spring 트랜잭션 프록시를 통해 배치 롤백을 확인한다. 로컬 Gradle 배포 파일 다운로드가 네트워크에 막혔으므로 **이번 브랜치의 Java 시험·JAR·실 MySQL 검색은 아직 통과로 보고하지 않는다.** 실제 SEC→Java→MySQL 수집, 지연·쿼리 플랜, 원문 파일 재검사, 고정 근거 평가, 벡터 검색, LLM·사람 검토, Kafka, 공개 GET 전환도 미검증/미구현이다.
+`EvidenceRetrieverTest`는 V3 스키마의 H2 MySQL 모드에서 종목 분리, 접수·수집 시간 경계, 같은 파일의 두 원문 버전, 최신 `PENDING` 시 구버전 숨김, 해시 손상, 검색 순위와 근거 ID를 검사한다. 추가 테스트는 Spring 트랜잭션 프록시를 통해 배치 롤백을 확인한다. 로컬 Gradle 배포 파일 다운로드는 네트워크에 막혔다. **PR #29 코드 커밋 `0bdbdc6`의 원격 Java 21 전체 시험·실행 JAR, Compose, Blue/Green, 스키마 게이트는 성공했다.** 이 문서 기록 커밋의 원격 게이트는 별도로 확인한다. 실제 SEC→Java→MySQL 수집, 실 MySQL 지연·쿼리 플랜, 원문 파일 재검사, 고정 근거 평가, 벡터 검색, LLM·사람 검토, Kafka, 공개 GET 전환은 미검증/미구현이다.
