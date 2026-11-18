@@ -156,3 +156,24 @@
 - V3 스키마를 H2 MySQL 모드에 적용한 시험에 종목 분리, 접수·수집 시간 경계, 같은 파일의 두 원문 버전과 최신 `PENDING` 숨김, 손상 해시, 순위를 넣었다. 이번 수정에서는 **Spring 트랜잭션 프록시를 실제로 띄워** 첫 문서 상태 업데이트 뒤 다음 문서 검사 실패 시 두 상태가 `PENDING`인 사례를 추가했다.
 - 로컬 `bash gradlew test bootJar --no-daemon`은 Gradle 8.5 배포 파일을 받지 못해 테스트 자체가 시작되지 않았다. `git diff --check`는 통과했다. PR #29의 코드 커밋 `0bdbdc6`에서 Java 21 전체 시험과 실행 JAR 검증 2개, Compose 스모크, Blue/Green 정상·복귀, 스키마 게이트, 이메일 가입 검사가 모두 성공했다. `chat-quality.yml`의 `test` 작업은 `gradlew test bootJar`를 실행하므로 위 롤백 시험도 자동 시험 집합에 포함된다. 후보 이미지 게시·운영 기동·실 SMTP는 조건부 작업으로 건너뛰었다. **이번 기록 커밋의 CI는 별도 확인한다.**
 - 실 MySQL의 쿼리 플랜·지연, 실제 SEC→MySQL 수집, 원본 파일 재확인, 30건 검색 평가, 임베딩 비교, LLM 호출·출처 의미 검증, 검토·공개 결과, Kafka와 운영 배포는 아직 미검증/미구현이다. 다음 기능은 검색 기준선의 CI 검증 후 동일 문서에서 임베딩과 비교하고 근거 ID에 묶인 초안·사람 검토를 만드는 것이다. 모델·키·호출 예산이 없으면 유료 LLM 실제 호출은 완료로 세지 않는다.
+
+# Java 근거 스냅샷과 초안 승인 경계 (2026-11-18)
+
+## 시작·변경 파일·추가 기능
+
+- 시작 기준: 원격 main `db9589b`에 #29 검색 PR이 병합된 상태이고 열린 Java PR이 없음을 확인했다. 기존 작업 트리는 그대로 두고 main에서 `feat/java-briefing-publication`을 만들었다. 최신 웹 주간 계획과 Java 제품 방향을 읽었다.
+- 변경 파일: [V4 마이그레이션](src/main/resources/db/migration/V4__briefing_draft_review.sql), [BriefingDraftService](src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java), [통합 성격의 저장·승인 시험](src/test/java/com/fitmeet/briefing/publication/BriefingDraftServiceTest.java), [코드 순서·경계 상세](docs/briefing/java-draft-review.md), 이 Review.md.
+- 추가 기능: 내부 생성기가 앞으로 사용할 수 있는 **검색된 근거에 묶인 초안 저장**과 **해시를 확인하는 사람 승인**. 공개 GET은 아직 `BriefingGateway` → Python이며 Java 초안 서비스에 연결되지 않았다. 인증된 리뷰 API·실제 LLM·Kafka도 추가하지 않았다.
+
+## 실제로 호출할 때의 순서와 설계 이유
+
+1. 미래 생성기가 종목·검색어·기준 시각·요약문·인용할 청크 ID 목록을 `create`에 넘긴다. 아직 이 메서드를 호출하는 운영 생성기는 없다.
+2. `EvidenceRetriever.search(..., 7, 8)`가 내부에서 실행된다. 종목/시점/버전과 `KEYWORD_READY` 조건을 이미 통과한 이번 검색 결과의 ID만 인용으로 허용한다. 예를 들어 `rag_chunk`에 실재해도 검색 기간 밖이거나 새 `PENDING` 버전 때문에 숨겨진 구버전 청크라면 초안 INSERT 전에 거부한다. 단순 FK만 쓰면 이런 잘못된 인용을 걸러낼 수 없기 때문이다.
+3. MySQL `DATETIME(6)`와 일치시키려고 `asOf`를 마이크로초로 정규화하고, 청크 ID 순으로 출처를 고정한다. 종목·시각·요약·각 청크 ID/문서 ID/텍스트 해시/원문 해시/URL/두 시각을 길이 접두사와 함께 SHA-256에 넣어 초안 해시를 만든다. `briefing_draft`와 `briefing_draft_evidence`는 하나의 DB 트랜잭션으로 INSERT한다. FK는 원본 청크와의 연결을, 스냅샷 필드는 그때 검토한 버전의 식별을 맡는다.
+4. `approve(id, expectedSha256, reviewer)`는 저장된 요약과 출처를 다시 읽고 해시를 재계산한다. 검토자가 본 해시와 세 값이 같아야 `status='DRAFT' AND content_sha256=?` 조건부 UPDATE를 수행한다. 검토 전 또는 중에 내용이 바뀌었거나 누군가 먼저 승인했다면 실패한다. `latestApproved`도 해시를 다시 확인하고 승인된 행만 돌려준다. **해시가 맞아도 요약의 사실성이나 인용 문장의 의미가 맞는지는 별개**이며 사람이 실제 근거를 보고 검토할 UI·권한은 후속이다.
+
+## 실패·중복·트랜잭션과 검증 상태
+
+- 잘못된 인용/중복 ID·빈 요약은 초안을 남기지 않는다. 초안과 인용 행의 INSERT 중 예외가 나면 해당 서비스 트랜잭션은 롤백된다. SEC 원본 저장이나 다른 배치는 대상이 아니다. 재승인 요청은 DRAFT 상태 검사에서 거절된다. 원본 버전이 뒤늦게 추가되어도 이 초안은 선택 당시의 출처 ID·해시를 보유한다.
+- H2 MySQL 모드에서 V3와 V4를 순서대로 적용하고 Spring 트랜잭션 프록시로 PENDING 거부→READY 인용→검토 전 숨김→정확한 해시 승인→재승인 거부와 내용·출처 변조 거부를 검증하는 테스트를 작성했다. 로컬 Gradle 8.5 배포 파일을 다운로드할 수 없어 **아직 실행 성공으로 세지 않는다**. `git diff --check`는 통과했다. 원격 CI와 실 MySQL 마이그레이션 확인 결과는 PR의 커밋별로 이어서 기록한다.
+- 인증/권한 있는 검토 진입점, 모델 공급자·키·예산, 구조화 출력/수치 검증, 30건 검색 평가, 실제 문장 대조, 공개 GET 전환, Kafka, 실제 운영 배포는 미구현/미검증이다. 브리핑을 `ready`로 표시하는 사용자 기능을 이번 변경으로 주장하지 않는다. 다음에는 실제 모델의 제한 호출과 초안 포맷·근거 검증을 연결하고, 검토 권한/화면 및 공개 응답 계약을 별도 인수한다.
