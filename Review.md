@@ -115,3 +115,4 @@
 - 변경: `application.yml`의 `issuers` 목록에서 CAMT를 첫 설정값으로 두고 `SecIssuer`가 티커·10자리 CIK·허용 서식을 검증한다. `SecIngestionRunner`와 `FilingIngestionService`가 목록을 순회한다. `SecClient`는 설정 CIK로 SEC 주소를 만들고 `SecFilingCatalog`는 응답의 CIK와 티커를 모두 대조한다. `FilingDocumentRepository`는 해당 발행자 정보를 문서별로 저장한다. 임의 응답 URL을 따라가지 않는다.
 - 추가된 기능과 경계: 검증된 다른 발행자 항목을 설정으로 추가해 같은 원문 저장·청크 경로를 재사용할 수 있다. 새 종목의 브리핑 공개, PDF·XBRL 처리, 종목별 인용 검증은 여전히 별도 작업이다. 코드 위치와 설정 예시는 [수집 흐름 설명](docs/briefing/java-camt-ingestion.md)에 정리했다.
 - 검증: `application.yml`의 실제 CAMT 설정 바인딩, 서로 다른 CIK·서식·종목을 사용하는 두 발행자 선택, 잘못된 발행자 응답과 위험한 종목명 거절, 같은 accession·해시의 종목별 DB 격리를 시험에 추가했다. 최신 커밋의 원격 CI 결과는 별도로 확인한다.
+- 최신 통합 게이트: `560a6e3`(main #27 병합 포함)에서 Java 전체 시험 2개, JAR·후보 이미지 검증 2개, Compose 스모크, 스키마 게이트, Blue/Green 정상 전환과 실패 주입 후 자동 복귀가 모두 성공했다. 후보 운영 기동·실 SMTP·배포는 실행 조건이 없어 건너뛰었다. 실제 SEC→Java→MySQL 원문 저장과 운영 영속 볼륨은 아직 미검증이다.
