@@ -97,3 +97,22 @@
 - 이유: RAG를 Java에서 구현하기 위해 Spring AI 모델 인터페이스를 먼저 연결하고, 회원·채팅·Redis·MySQL·배포 이미지 회귀를 한 번에 확인한다. 외부 LLM 스타터와 API 키 설정은 실제 생성 기능 단계에서 고른다.
 - 추가 기능: 브리핑 화면·API의 사용자 동작 변경 없음. 공시 수집·검색·Kafka 소비는 아직 미구현이다.
 - 검증: Spring 공식 호환 조합(3.5.x/1.1.x)과 Gradle 요구 범위를 확인했다. PR #26의 Boot 3.5.16·Spring AI 1.1.8 변경 커밋에서 Java 전체 시험 2개, JAR·후보 이미지 검증 2개, Compose smoke, Blue/Green, 스키마 게이트가 모두 성공했다. SMTP 실발송과 후보 운영 기동·배포 작업은 조건부 단계여서 생략됐다. 실제 유료 LLM/실 Kafka·운영 배포는 하지 않았다.
+
+## Java CAMT 공시 수집과 불변 원문 저장 (2026-11-17)
+
+- 작업량·변경 파일: Java `briefing/ingestion` 패키지의 SEC 전송·목록 선택·HTML 청크·원문 파일·DB 저장·일회성 실행기, `V3__rag_source_documents.sql`, 수집 설정, jsoup 의존성, 세 가지 테스트와 [상세 코드 리뷰](docs/briefing/java-camt-ingestion.md)를 추가했다. 기존 공개 GET·회원·채팅 동작은 수정하지 않았다.
+- 사용자 요청과 이유: Java가 RAG와 Kafka를 소유한다는 결정에 따라 먼저 근거가 될 공식 공시 버전을 Java/MySQL에 남긴다. LLM 응답의 인용을 감사하려면 URL만이 아니라 실제 원문 바이트의 해시·시각·파서 버전·청크 순서를 함께 보존해야 한다.
+- 실행 순서: 명시적으로 활성화한 `CamtIngestionRunner` → `SecClient`의 고정 CIK 목록 → `SecFilingCatalog`의 CAMT·기준 시각·서식 검증 → SEC HTML 다운로드 → `FilingChunker`의 표 행/열 분리 → `RawFilingStore`의 해시 파일 → `FilingDocumentRepository`의 원문 버전 및 청크 DB 저장. 파일 경로와 각 코드의 경계·실행 방법은 상세 리뷰에 썼다.
+- 정상·중복·정정·실패: 기본 기동에서 외부 호출 없음. 같은 accession·문서·원문 해시는 DB 유일 키로 중복 제거한다. 정정 공시나 바뀐 원문은 새 버전으로 기록한다. 다른 발행자·불완전한 SEC 배열·미래 문서·잘못된 파일명·리다이렉트·과대 응답·빈 본문은 실패 처리한다. 파일 쓰기 후 DB 실패 시 해시 파일만 남을 수 있으며 재실행으로 회복한다. 청크는 `PENDING`이라 색인·공개되지 않는다.
+- 확인한 자료: SEC 실 CAMT 목록의 2026-11-04 6-K accession `0001178913-26-005000`과 HTML 원문 HTTP 200을 읽기 전용으로 확인했다. 11/17 현재 7일 밖의 공시이므로 새 공개 브리핑의 최신 근거로 간주하지 않는다.
+- 테스트·한계: 카탈로그의 발행자/열 길이/정정·기간 선택, 표의 단위·숨겨진 텍스트, H2 MySQL 모드에서 V3 적용·원문 두 버전·중복 저장 시험을 추가했다. `git diff --check` 통과. 로컬 Gradle 8.5 다운로드는 네트워크 차단으로 실패해 Java 테스트와 실행 JAR 결과는 PR CI에서 확인한다. 유효한 SEC 연락처·운영 영속 볼륨·실 MySQL이 제공되지 않아 Java 수집기의 실제 쓰기 종단 시험은 미완료다. 검색·LLM·검토·Kafka·공개 조회 전환도 미구현이며 이번 단계의 성공으로 기록하지 않는다.
+- PR 게이트 첫 실행: Java 시험 2개와 스키마 소스 게이트가 통과했다. Compose는 앱이 기동하고 JAR을 빌드했지만 기존 `deploy/smoke_test.py`가 최신 Flyway 버전을 2로 고정해 V3 도입을 실패로 판단했다. V2 적용 여부와 컨테이너 재생성 전후의 전체 성공 마이그레이션 집합을 검사하도록 고쳤다. 새 커밋에서 Compose·Blue/Green 재검증한다.
+- 최신 PR 게이트: 수정 커밋 `d1e2b7b`에서 Java 전체 시험 2개, JAR 검증 2개, Compose 스모크, Blue/Green, 스키마 게이트가 모두 성공했다. SMTP 실발송·후보 운영 기동·배포는 조건부 건너뜀이다. SEC 제출 목록과 HTML은 읽기 전용으로만 확인했으며 Java 수집기로 실제 SEC→MySQL 쓰기를 검증한 것은 아니다.
+
+### 종목별 SEC 발행자 설정으로 수정
+
+- 사용자 지적: 첫 버전에는 CAMT 티커·CIK·6-K/20-F 서식이 `SecClient`, 목록 선택, 파일 URL, DB 저장에 반복 고정돼 있었다. 다음 종목마다 코드를 복사해야 하는 구조였다.
+- 변경: `application.yml`의 `issuers` 목록에서 CAMT를 첫 설정값으로 두고 `SecIssuer`가 티커·10자리 CIK·허용 서식을 검증한다. `SecIngestionRunner`와 `FilingIngestionService`가 목록을 순회한다. `SecClient`는 설정 CIK로 SEC 주소를 만들고 `SecFilingCatalog`는 응답의 CIK와 티커를 모두 대조한다. `FilingDocumentRepository`는 해당 발행자 정보를 문서별로 저장한다. 임의 응답 URL을 따라가지 않는다.
+- 추가된 기능과 경계: 검증된 다른 발행자 항목을 설정으로 추가해 같은 원문 저장·청크 경로를 재사용할 수 있다. 새 종목의 브리핑 공개, PDF·XBRL 처리, 종목별 인용 검증은 여전히 별도 작업이다. 코드 위치와 설정 예시는 [수집 흐름 설명](docs/briefing/java-camt-ingestion.md)에 정리했다.
+- 검증: `application.yml`의 실제 CAMT 설정 바인딩, 서로 다른 CIK·서식·종목을 사용하는 두 발행자 선택, 잘못된 발행자 응답과 위험한 종목명 거절, 같은 accession·해시의 종목별 DB 격리를 시험에 추가했다. 최신 커밋의 원격 CI 결과는 별도로 확인한다.
+- 최신 통합 게이트: `560a6e3`(main #27 병합 포함)에서 Java 전체 시험 2개, JAR·후보 이미지 검증 2개, Compose 스모크, 스키마 게이트, Blue/Green 정상 전환과 실패 주입 후 자동 복귀가 모두 성공했다. 후보 운영 기동·실 SMTP·배포는 실행 조건이 없어 건너뛰었다. 실제 SEC→Java→MySQL 원문 저장과 운영 영속 볼륨은 아직 미검증이다.
