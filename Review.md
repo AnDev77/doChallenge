@@ -179,3 +179,25 @@
 - 인증/권한 있는 검토 진입점, 모델 공급자·키·예산, 구조화 출력/수치 검증, 30건 검색 평가, 실제 문장 대조, 공개 GET 전환, Kafka, 실제 운영 배포는 미구현/미검증이다. 브리핑을 `ready`로 표시하는 사용자 기능을 이번 변경으로 주장하지 않는다. 다음에는 실제 모델의 제한 호출과 초안 포맷·근거 검증을 연결하고, 검토 권한/화면 및 공개 응답 계약을 별도 인수한다.
 - 첫 원격 커밋 `8a66209`에서 Java 시험/JAR 게이트가 실패했다. `BriefingDraftService`에 공개 생성자와 시험용 `Clock` 생성자가 함께 있어 Spring이 무인자 생성자를 찾다가 `NoSuchMethodException`이 난 것이 원인이다. 사용하지 않는 두 번째 생성자를 제거해 단일 주입 생성자로 수정했다. 첫 CI의 V4 스키마 게이트는 통과했지만 전체 Java 통과로 해석하지 않는다. 수정 커밋의 원격 게이트를 재확인한다.
 - 수정 후 코드가 포함된 `57ffd32` 원격 CI에서는 Java 21 전체 시험·실행 JAR, 후보 이미지 검증, Compose/배포 구성 스모크, Blue/Green 전환·복귀, 스키마 게이트, 채팅·이메일 가입 검사가 모두 성공했다. 이는 합성/CI 환경 검증이며 실 MySQL의 운영 마이그레이션, 실제 SEC 수집, 실 모델 호출, 검토자 인증 및 운영 배포 완료를 뜻하지 않는다. 이 결과를 기록한 문서 커밋의 게이트는 별도로 확인한다.
+
+# Java 근거 기반 LLM 초안 생성 (2026-11-18)
+
+## 시작·파일·새 기능
+
+- 시작 상태: #30은 main `334b6aa`에 병합됐고 열린 Java PR은 없었다. `feat/java-briefing-generation`은 그 main에서 시작했다. 웹 주간 계획과 Java 제품 방향의 Java RAG·사람 검토 경계를 유지한다.
+- 바뀐 파일: `build.gradle`과 `application.yml`의 Spring AI OpenAI 스타터·기본 비활성 설정, [모델 포트](src/main/java/com/fitmeet/briefing/generation/BriefingModel.java), [Spring AI 어댑터](src/main/java/com/fitmeet/briefing/generation/SpringAiBriefingModel.java), [생성 흐름](src/main/java/com/fitmeet/briefing/generation/BriefingGenerationService.java), [생성 시험](src/test/java/com/fitmeet/briefing/generation/BriefingGenerationServiceTest.java), [어댑터 시험](src/test/java/com/fitmeet/briefing/generation/SpringAiBriefingModelTest.java), [상세 코드 순서](docs/briefing/java-llm-draft-generation.md), 이 Review.md. 마이그레이션이나 공개 API는 바꾸지 않는다.
+- 추가 기능: 내부 호출자가 종목·질의·시점을 주면 실제 Spring AI `ChatModel`로 한 번 요약을 생성할 수 있는 경로다. 기본 앱에는 모델이 없어 호출하면 명시적으로 실패한다. 생성 작업 실행기·검토 UI·공개 조회·Kafka는 아직 연결되지 않아 사용자가 보는 동작 변화는 없다.
+
+## 코드 순서, 설계 이유, 실패 경로
+
+1. `BriefingGenerationService.generate`가 시각을 마이크로초로 정규화하고 `EvidenceRetriever.search(..., 7, 8)`로 최대 8개 근거를 고른다. 0건이면 비용이 드는 모델을 호출하지 않는다. 이 검색은 SEC 접수와 우리 수집 시각, 최신 원문 버전, `KEYWORD_READY` 조건을 따르는 이전 기준선이다.
+2. JSON으로 직렬화한 근거 ID·두 해시·접수/수집 시각·URL·본문을 사용자 메시지 데이터로 보내고, 시스템 메시지에서 이 내용의 명령을 무시하고 근거만 쓰도록 지시한다. `SpringAiBriefingModel`은 `ChatModel`이 설정된 경우에만 모델을 호출한다. 호출을 DB 트랜잭션 밖에 놓아 느린 외부 응답 동안 DB 변경 트랜잭션을 열어두지 않는다. 응답 유실/실패 시 공급자 비용이 발생할 수 있으며 DB 롤백으로 이를 되돌릴 수 없다.
+3. 응답은 JSON 객체 두 키(`summary`, `citation_ids`)로 제한한다. 중복 키·추가 필드·뒤따르는 텍스트·없는 근거 ID·중복 인용·빈 인용·숫자 포함 문장을 거부하고 초안 INSERT를 하지 않는다. 숫자 제한은 원문 수치/기간/단위를 검증할 코드가 없는 동안 적용한 좁은 정책이다. 인용 ID가 맞아도 문장 의미가 근거와 일치하는지는 아직 사람 검토와 평가가 필요하다.
+4. 통과하면 `BriefingDraftService.create`가 같은 시각·검색어로 다시 조회해 모델이 받은 청크가 여전히 적격인지 확인한다. 모델 호출 중 새 `PENDING` 원문이 기존 검색 버전을 숨겼다면 인용이 탈락하고 저장되지 않는다. 재검색 후 V4 초안·근거 INSERT만 한 트랜잭션이다. 저장 성공 상태는 `DRAFT`이지 사용자용 `ready`가 아니다.
+
+## 실제 검증·한계·다음 일
+
+- H2 MySQL 모드 V3/V4와 가짜 모델 출력 시험에 정상 초안·미승인 비공개, 0건 근거의 모델 호출 회피, 가짜/중복 인용, 중복 JSON 키·추가 필드·뒤따르는 텍스트·숫자 등 잘못된 출력 거부, 모델 호출 도중 같은 원문 버전의 새 `PENDING` 수집 시 저장 차단을 추가했다. 별도 Spring AI 어댑터 시험은 역할별 메시지와 모델 미설정 오류를 다룬다. 이 기록 시점 로컬 Gradle 8.5 다운로드는 네트워크 제한으로 실행할 수 없어 원격 PR CI의 전체 시험/JAR 결과를 별도로 확인해야 한다.
+- `BRIEFING_CHAT_PROVIDER=none`이 기본이다. 모델을 활성화하려면 키·계정과 비용 한도를 준비한 별도 실행 환경이 필요하다. 실제 유료 호출, 내용 의미·한글 품질·숫자 대조, 30건 고정 근거 평가, 실 MySQL/SEC 종단, 인증된 검토·공개, Kafka, 운영 배포는 이 PR에서 검증하지 않았다. 다음 일은 제한된 실제 모델 호출과 고정 근거 평가, 검토자 인증·공개 조회 연결이다. Kafka는 직접 생성 경로가 검증된 뒤 붙인다.
+- 첫 PR CI에서 기존 HTTP/채팅 통합 시험의 앱 컨텍스트 기동이 `BeanCreationException`/`IllegalArgumentException`으로 실패했다. OpenAI 스타터의 채팅·임베딩 외 이미지/오디오/모더레이션 자동 설정도 키 없는 환경에서 활성화될 수 있으므로 해당 모델을 `none`으로 명시해 재검증한다. 실패 상태를 성공으로 기록하지 않는다.
+- 수정 코드가 포함된 원격 커밋 `55b3163`의 Java 21 전체 시험·JAR 검증, 후보 이미지 검증, Compose/배포 구성 스모크, Blue/Green 정상·복귀, 스키마 게이트, 채팅·이메일 가입 검사가 모두 성공했다. 따라서 기본 기동 실패는 스타터가 활성화한 사용하지 않는 모델 자동 설정을 명시적으로 끄면서 해소됐다. **실제 OpenAI 키로 모델 호출한 결과는 아니다.** 이 결과를 적은 마지막 문서 커밋의 CI는 별도로 확인한다.
