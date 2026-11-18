@@ -1,4 +1,14 @@
 spring:
+  ai:
+    model:
+      chat: ${BRIEFING_CHAT_PROVIDER:none}
+      embedding: none
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${BRIEFING_CHAT_MODEL:gpt-5-mini}
+          max-completion-tokens: ${BRIEFING_MAX_COMPLETION_TOKENS:1024}
   flyway:
     enabled: false
   mail:
