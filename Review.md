@@ -116,3 +116,11 @@
 - 추가된 기능과 경계: 검증된 다른 발행자 항목을 설정으로 추가해 같은 원문 저장·청크 경로를 재사용할 수 있다. 새 종목의 브리핑 공개, PDF·XBRL 처리, 종목별 인용 검증은 여전히 별도 작업이다. 코드 위치와 설정 예시는 [수집 흐름 설명](docs/briefing/java-camt-ingestion.md)에 정리했다.
 - 검증: `application.yml`의 실제 CAMT 설정 바인딩, 서로 다른 CIK·서식·종목을 사용하는 두 발행자 선택, 잘못된 발행자 응답과 위험한 종목명 거절, 같은 accession·해시의 종목별 DB 격리를 시험에 추가했다. 최신 커밋의 원격 CI 결과는 별도로 확인한다.
 - 최신 통합 게이트: `560a6e3`(main #27 병합 포함)에서 Java 전체 시험 2개, JAR·후보 이미지 검증 2개, Compose 스모크, 스키마 게이트, Blue/Green 정상 전환과 실패 주입 후 자동 복귀가 모두 성공했다. 후보 운영 기동·실 SMTP·배포는 실행 조건이 없어 건너뛰었다. 실제 SEC→Java→MySQL 원문 저장과 운영 영속 볼륨은 아직 미검증이다.
+# Java 공시 키워드 검색 기준선 (2026-11-18)
+
+- 시작 상태: Java main `97d4248`, SEC 수집 초안 #28 `2a42be2`. #28은 아직 미병합이다. 기존 작업 트리의 변경을 보존하기 위해 #28 최신 head에서 별도 작업 트리를 만들었다. 웹 11/16 주간 계획과 Java 11/17 제품 방향을 읽었으며 11/18 실제 브리핑 목표를 이번 변경만으로 달성했다고 주장하지 않는다.
+- 작업량·변경 파일: [KeywordReadinessService](src/main/java/com/fitmeet/briefing/retrieval/KeywordReadinessService.java), [EvidenceRetriever](src/main/java/com/fitmeet/briefing/retrieval/EvidenceRetriever.java), [SecIngestionRunner](src/main/java/com/fitmeet/briefing/ingestion/SecIngestionRunner.java), [검색 시험](src/test/java/com/fitmeet/briefing/retrieval/EvidenceRetrieverTest.java), [상세 설명](docs/briefing/java-keyword-retrieval.md), 이 Review.md. 신규 외부 인프라·공개 API·마이그레이션은 없다.
+- 구조·선택 이유: 문서 저장 후 청크의 개수·순서·SHA-256을 확인해 `PENDING`에서 `KEYWORD_READY`로 전환한다. 같은 MySQL 청크로 종목·SEC 접수·실제 수집 시각과 불변 원문 버전을 제한해 검색한다. 이것을 임베딩 검색과 같은 조건에서 비교할 수 있는 키워드 기준선으로 선택했다. 단순 `LIKE`가 최종 규모·검색 품질에 적합하다고 주장하지 않는다.
+- 추가 기능과 호출 흐름: 수집 실행기 → SEC 원문 저장/청크 → 트랜잭션 내 검색 가능 상태 표시. 후속 Java 생성 서비스 → `EvidenceRetriever.search` → 청크 ID·문서 ID·URL·해시·접수/수집 시각을 가진 근거 목록. 사용자용 GET과 LLM 동작은 이번에 변경하지 않았다.
+- 정상·중복·실패: 이미 `KEYWORD_READY`인 문서는 재처리하지 않는다. 같은 accession의 새 버전이 수집되면 새 버전이 준비될 때까지 기존 것을 검색에서 제외한다. 청크 손상·불연속·공백은 상태 변경 전에 실패한다. 미래 접수/적재 문서, 다른 종목과 `PENDING` 문서는 검색 대상이 아니다.
+- 검증과 한계: V3 기반 H2 시험으로 후보 자격·정정·미래 자료·출처·해시 손상을 검사하는 코드를 추가했다. `git diff --check` 통과. `bash gradlew test --no-daemon`은 Gradle 8.5 배포 파일 연결 차단으로 시작하지 못했다. CI·JAR·실 MySQL·실 SEC→MySQL·LLM·Qdrant·Kafka·배포 검증은 미실행이다. 모델 키·호출 예산이 정해지지 않아 유료 호출은 진행하지 않았다. 다음 작업은 이 검색 기준선의 컴파일·동작 검증, 고정 평가 세트와 임베딩 비교, 근거 기반 초안·검토/저장이다.
