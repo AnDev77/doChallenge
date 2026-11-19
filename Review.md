@@ -207,3 +207,12 @@
 - 시작·변경: 사용자 제공 서버 3기 PDF 17쪽을 다시 읽고, 2026-10-27의 제안 문서와 최신 Java main의 구현·시험을 대조했다. [원본 페이지별 구현 표](docs/references/learners-high-implementation-map.md)를 만들고 기존 제안 문서에 연결했다. `AGENTS.md`에 이후 개발마다 이 대조를 남기는 규칙을 추가하고, 현재 제품 방향의 오래된 “Gateway만 구현” 표현을 실제 내부 Java RAG 구현 단계로 갱신했다.
 - **Learner's High 대조:** p. 5의 Redis 원자 처리 질문은 종목 채팅 Lua 게시 제한, p. 6의 정합성 질문은 원문/청크 검증·초안 트랜잭션, pp. 7–8의 호출 실패 질문은 Gateway 제한, p. 11의 인증 질문은 STOMP/JWT 경계, p. 12의 마이그레이션 질문은 Flyway·Compose·Blue/Green 게이트, p. 13의 비용·품질 질문은 근거 없는 호출 차단·출력/인용 검증과 연결했다. 각 코드·시험·한계는 대조표에 있다. PDF의 구현을 그대로 옮겼다는 뜻은 아니며 Java Kafka, 실 모델 품질, 운영 부하·복구는 아직 적용 성과로 쓰지 않는다.
 - 작업량·검증 범위: 문서와 작업 기준만 변경했다. 새 실행 코드·의존성·DB·배포 변경이나 신규 테스트는 없다. 링크·형식 검사는 아래 작업에서 확인한다. 이후 기능 리뷰에는 직접 대응이 없을 때도 `직접 적용 없음`을 적으며, 적용 상태가 달라진 행만 이 표를 고친다.
+
+# Gemini 모델 공급자 선택지 (2026-11-19)
+
+- **시작:** 원격 main `190af5a`에 #31이 병합됐고 문서 PR #32는 아직 초안이다. 이 변경은 #32 위의 별도 작업 분기로 진행한다. 공개 GET은 Python Gateway, Java 초안 생성은 내부 호출용이며 실제 모델 키·평가 결과는 없다.
+- **바뀐 파일·구조:** `build.gradle`에 Spring AI 1.1 Google GenAI 스타터를, `application.yml`에 `GEMINI_API_KEY`·모델·JSON MIME·출력 상한 설정을 추가했다. 기존 `BRIEFING_CHAT_PROVIDER=none` 및 OpenAI 설정을 유지한다. [생성 경계 문서](docs/briefing/java-llm-draft-generation.md)를 갱신하고 [Learner's High 개발 대조](docs/references/learners-high-development-log.md)와 [포트폴리오용 근거](docs/portfolio/java-rag-briefing-evidence.md)를 분리했다. `AGENTS.md`에도 둘의 갱신 규칙을 적었다.
+- **설계 이유·기능:** `BRIEFING_CHAT_PROVIDER=google-genai`로 명시적으로 공급자를 바꿔 같은 `ChatModel`·초안 검사를 재사용한다. 기본 기동은 외부 호출 없이 유지한다. JSON MIME을 요청해도 JSON/인용 검사는 Java에서 계속 수행한다. 실험 전에 모델 이름·키·무료 한도와 데이터 정책을 확인한다.
+- **Learner's High 대조:** p. 13의 모델 비용과 결과 품질 비교 질문에 맞춰 공급자 전환 경계를 준비했다. 실제 두 모델의 품질·가격을 비교했다고 주장하지 않는다. 원본의 기술을 복제한 것도 아니다.
+- **검증·한계:** 가짜 키를 쓴 [Gemini 공급자 컨텍스트 시험](src/test/java/com/fitmeet/briefing/generation/GeminiProviderContextTest.java)을 추가했다. 로컬 `bash gradlew test bootJar --no-daemon`은 Gradle 배포 파일 다운로드가 네트워크 제한으로 실패해 시험을 시작하지 못했다. 이번 PR의 원격 Java 전체 시험·JAR 및 Compose/Blue/Green 결과를 따로 확인한다. API 키가 없어 실제 Gemini 응답·지연·비용·한글 품질·문장/근거 의미 일치, 인증된 검토·공개 조회, Kafka는 미검증이다. 실행 코드의 생성·저장 규칙과 DB 마이그레이션은 바꾸지 않았다.
+- **원격 확인:** PR #33의 코드 커밋 `8b542f2`에서 Java 전체 시험/JAR, 후보 이미지, 첫 배포 스택, Compose 인수, Blue/Green 전환, 스키마 게이트, 이메일 가입의 일곱 워크플로가 모두 성공했다. 이는 가짜 키로 앱 컨텍스트가 Gemini `ChatModel`을 선택한 시험과 기본 비활성 기동의 검증이지 실제 Gemini API 통신·품질 검증은 아니다. 이 결과 기록 커밋의 새 게이트는 별도로 확인한다.

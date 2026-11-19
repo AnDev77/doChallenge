@@ -18,3 +18,4 @@
 
 - 모든 기능의 Review.md에는 바뀐 파일·구조, 설계 선택 이유, 추가된 기능, 사용자 요청에서 달라진 점, 시험 결과와 미검증 범위를 명시한다. 기능별 리뷰가 따로 있더라도 Review.md에서 경로를 찾을 수 있게 한다.
 - 매 개발 작업의 Review.md에 `Learner's High 대조` 항목을 남긴다. [원본과 실제 구현 대조표](docs/references/learners-high-implementation-map.md)에서 관련 주제·원본 페이지를 찾고, 이번 변경에 적용한 판단과 코드/시험 경로, 검증 상태를 적는다. 직접 연관이 없으면 `직접 적용 없음`과 이유를 적는다. 단순 유사성, 구현 계획, CI 통과, 운영 실증을 서로 바꿔 쓰지 않는다. 새로 적용·검증한 근거가 생기면 대조표도 갱신한다. 기존 리뷰의 과거 판단은 소급해서 고치지 않는다.
+- 러너스하이 기술 대조는 `docs/references/learners-high-development-log.md`, 포트폴리오에 쓸 근거·문구는 `docs/portfolio/java-rag-briefing-evidence.md`에 **별도로** 갱신한다. 포트폴리오에는 구현·시험을 확인한 내용만 완료형으로 쓰고 미검증 항목은 예정/제외로 표시한다.

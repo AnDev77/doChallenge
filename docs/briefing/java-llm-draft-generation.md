@@ -21,3 +21,11 @@
 H2 MySQL 모드 V3→V4의 실제 원문/청크·READY 상태에서 모의 모델 출력을 사용해 `DRAFT` 저장과 미승인 비공개를 확인한다. 0건 근거는 모델 호출 0회, 잘못된 JSON·숫자·가짜 인용·중복 키/ID는 저장 0건, 모델 호출 중 새 `PENDING` 원문이 들어오면 재검색에서 실패하는 사례를 검증한다. 별도 어댑터 시험은 시스템/사용자 메시지 분리와 모델 미설정 실패를 확인한다.
 
 이 시험은 실제 SEC → MySQL 수집, 실제 OpenAI 호출, 한글 품질/문장 의미 대조, 30건 검색 평가, 수치 대조, 검토 권한·화면, 공개 API 전환, Kafka, 운영 배포의 완료 증거가 아니다. 실제 자료·모델 키·예산을 확인한 제한 호출과 고정 근거 평가가 다음 인수이며, 그 뒤에 인증된 검토·공개 전환을 진행한다.
+
+## 2026-11-19: Gemini 공급자 선택지
+
+Spring AI 1.1 계열의 Google GenAI 스타터를 추가하고, `BRIEFING_CHAT_PROVIDER=google-genai`, `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`을 별도 작업 환경에 설정하면 같은 `ChatModel` 경계로 Gemini를 선택하도록 구성했다. 모델 이름 기본값은 `gemini-3.5-flash-lite`, 응답 MIME은 JSON, 출력 토큰 상한은 공통 `BRIEFING_MAX_COMPLETION_TOKENS`(기본 1024)다. OpenAI 설정은 남겨 비교 후보로 두고, 기본 공급자 `none`은 그대로라 기동이나 사용자 GET만으로 외부 호출하지 않는다. [Spring AI 1.1 Google GenAI 설정](https://docs.spring.io/spring-ai/reference/1.1/api/chat/google-genai-chat.html)을 참고했다.
+
+선택 값은 **서버 배포 환경**에서만 설정한다. 키를 브라우저, Git, 일반 로그에 넣지 않는다. 기존 `SpringAiBriefingModel`이 주입된 `ChatModel`을 호출하고 `BriefingGenerationService`가 같은 인용 ID·JSON·숫자 정책을 검사한다. JSON MIME은 모델 출력 형식을 요청할 뿐 검증을 대체하지 않는다. 아직 실행기가 없으므로 환경 변수를 설정해도 자동 생성은 시작되지 않는다.
+
+이번 [공급자 선택 시험](../../src/test/java/com/fitmeet/briefing/generation/GeminiProviderContextTest.java)은 가짜 키로 앱 컨텍스트를 띄워 Gemini `ChatModel`이 선택되는지 확인하며 네트워크 요청은 하지 않는다. 실제 Gemini API 키·호출 승인·고정 공시 평가 자료가 없어 **실제 연결, 응답 품질, 비용/무료 한도, 요약·근거 의미 일치**는 확인하지 못했다. 무료 구간은 모델·사용량 제한과 데이터 처리 정책을 확인한 뒤 공개 공시와 합성 질의만으로 제한 호출해야 한다. 실제 실험에서는 입력 공시의 버전/해시, 모델 식별자, 호출 시각, 지연, 결과 JSON 적합률, 유효 인용률, 사람이 확인한 문장 근거 일치율을 기록한다. 모델을 바꾸거나 가격·제공 정책이 달라지면 같은 평가 자료로 다시 비교한다.
