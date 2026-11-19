@@ -216,3 +216,10 @@
 - **Learner's High 대조:** p. 13의 모델 비용과 결과 품질 비교 질문에 맞춰 공급자 전환 경계를 준비했다. 실제 두 모델의 품질·가격을 비교했다고 주장하지 않는다. 원본의 기술을 복제한 것도 아니다.
 - **검증·한계:** 가짜 키를 쓴 [Gemini 공급자 컨텍스트 시험](src/test/java/com/fitmeet/briefing/generation/GeminiProviderContextTest.java)을 추가했다. 로컬 `bash gradlew test bootJar --no-daemon`은 Gradle 배포 파일 다운로드가 네트워크 제한으로 실패해 시험을 시작하지 못했다. 이번 PR의 원격 Java 전체 시험·JAR 및 Compose/Blue/Green 결과를 따로 확인한다. API 키가 없어 실제 Gemini 응답·지연·비용·한글 품질·문장/근거 의미 일치, 인증된 검토·공개 조회, Kafka는 미검증이다. 실행 코드의 생성·저장 규칙과 DB 마이그레이션은 바꾸지 않았다.
 - **원격 확인:** PR #33의 코드 커밋 `8b542f2`에서 Java 전체 시험/JAR, 후보 이미지, 첫 배포 스택, Compose 인수, Blue/Green 전환, 스키마 게이트, 이메일 가입의 일곱 워크플로가 모두 성공했다. 이는 가짜 키로 앱 컨텍스트가 Gemini `ChatModel`을 선택한 시험과 기본 비활성 기동의 검증이지 실제 Gemini API 통신·품질 검증은 아니다. 이 결과 기록 커밋의 새 게이트는 별도로 확인한다.
+
+# 승인 브리핑 Java 공개 조회 연결 (2026-11-19)
+
+- **시작과 변경:** Java #33 브랜치에서 `BriefingController`의 공개 조회 출처를 `BRIEFING_PUBLIC_PROVIDER`로 선택하게 했다. 기본값은 기존 Python이고, `java`를 설정하면 새 `JavaBriefingPublication`이 `BriefingDraftService.latestApproved`를 읽는다. 설정, 변환기, 출처/비공개 시험, 이 리뷰, 브리핑 설명·러너스하이·포트폴리오 기록을 변경했다.
+- **실행 흐름과 이유:** GET은 승인된 DB 초안만 읽고 LLM을 호출하지 않는다. Java 요약 문자열과 숫자 청크 ID를 기존 React의 요약 배열·문자열 인용 ID·출처 목록으로 변환한다. 검증되지 않은 상승/하락 요인은 비워 두고 방향은 판단 보류로 둔다. 원문 링크는 SEC HTTPS 호스트로 제한한다. 1,000자 초과 초안과 잘못된 출처는 실패 상태만 반환한다. 승인된 초안이 없으면 자료 부족 상태다.
+- **Learner's High 대조:** p. 6의 DB 정합성과 p. 13의 결과 품질 질문을 공개 응답 경계에 적용했다. 웹의 인용 ID와 검토된 스냅샷을 연결하고 공개 조회의 모델 재호출을 막는다. 이것은 토스 사례의 코드를 재현한 것이 아니다.
+- **검증과 한계:** 승인 데이터의 JSON 계약과 미승인·비 SEC 링크 차단을 시험에 넣었다. 로컬 Gradle 다운로드가 차단되어 원격 CI에서 전체 Java 회귀를 확인한다. 실제 SEC 수집·실 Gemini 호출·운영 승인·배포 및 프론트 공개는 별도 인수다. 사람이 의미를 확인할 인증 UI가 아직 없으므로 현재 승인 메서드의 reviewer 인자만으로 운영 검토를 완료했다고 간주하지 않는다.
