@@ -29,3 +29,7 @@ Spring AI 1.1 계열의 Google GenAI 스타터를 추가하고, `BRIEFING_CHAT_P
 선택 값은 **서버 배포 환경**에서만 설정한다. 키를 브라우저, Git, 일반 로그에 넣지 않는다. 기존 `SpringAiBriefingModel`이 주입된 `ChatModel`을 호출하고 `BriefingGenerationService`가 같은 인용 ID·JSON·숫자 정책을 검사한다. JSON MIME은 모델 출력 형식을 요청할 뿐 검증을 대체하지 않는다. 아직 실행기가 없으므로 환경 변수를 설정해도 자동 생성은 시작되지 않는다.
 
 이번 [공급자 선택 시험](../../src/test/java/com/fitmeet/briefing/generation/GeminiProviderContextTest.java)은 가짜 키로 앱 컨텍스트를 띄워 Gemini `ChatModel`이 선택되는지 확인하며 네트워크 요청은 하지 않는다. 실제 Gemini API 키·호출 승인·고정 공시 평가 자료가 없어 **실제 연결, 응답 품질, 비용/무료 한도, 요약·근거 의미 일치**는 확인하지 못했다. 무료 구간은 모델·사용량 제한과 데이터 처리 정책을 확인한 뒤 공개 공시와 합성 질의만으로 제한 호출해야 한다. 실제 실험에서는 입력 공시의 버전/해시, 모델 식별자, 호출 시각, 지연, 결과 JSON 적합률, 유효 인용률, 사람이 확인한 문장 근거 일치율을 기록한다. 모델을 바꾸거나 가격·제공 정책이 달라지면 같은 평가 자료로 다시 비교한다.
+
+## 승인 결과의 Java 공개 읽기 경로
+
+`BRIEFING_PUBLIC_PROVIDER=java`일 때 공개 GET은 `BriefingDraftService.latestApproved`에서 승인된 결과만 가져온다. [공개 변환기](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java)는 요약 1개에 인용된 청크 ID와 SEC HTTPS 링크를 붙여 React 스키마의 `ready` 응답을 만든다. 방향성은 `withheld`이고 분석하지 않은 상승·하락 요인은 빈 배열이다. 초안이 없으면 `insufficient_sources`, 요약이 1,000자를 넘거나 출처가 부적격이면 `failed`다. 기본 `python` 설정은 기존 게이트웨이 조회를 사용한다. 공개 GET이 LLM을 다시 호출하지 않는다. 이는 승인 결과 조회 코드이며 실제 검토자 인증·생성 실행기·운영 배포의 완료 기록은 아니다.

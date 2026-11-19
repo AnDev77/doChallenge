@@ -9,6 +9,7 @@
 | 과거 시점에 없던 SEC 공시를 근거로 넣지 않기 | [검색](../../src/main/java/com/fitmeet/briefing/retrieval/EvidenceRetriever.java), [검색·버전 시험](../../src/test/java/com/fitmeet/briefing/retrieval/EvidenceRetrieverTest.java) | SEC 접수·시스템 수집 시각, 같은 accession/파일명의 최신 수집본 상태를 검색에 적용했다. 공식 수정 공시 간 관계까지 해결한 것은 아니다. |
 | 손상·중복된 초안 승인 차단 | [청크 준비](../../src/main/java/com/fitmeet/briefing/retrieval/KeywordReadinessService.java), [초안 승인](../../src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java), [저장·승인 시험](../../src/test/java/com/fitmeet/briefing/publication/BriefingDraftServiceTest.java) | 해시·연속 청크 검사와 트랜잭션·조건부 승인을 구현했다. 의미 검증이나 실제 검토 UI는 아니다. |
 | 모델 공급자 선택과 출력 계약 | [Spring AI 어댑터](../../src/main/java/com/fitmeet/briefing/generation/SpringAiBriefingModel.java), [생성](../../src/main/java/com/fitmeet/briefing/generation/BriefingGenerationService.java), [모의 모델 시험](../../src/test/java/com/fitmeet/briefing/generation/BriefingGenerationServiceTest.java), [공급자 선택 시험](../../src/test/java/com/fitmeet/briefing/generation/GeminiProviderContextTest.java), [설정](../../src/main/resources/application.yml) | OpenAI와 Gemini를 설정으로 선택할 수 있는 연결을 추가했다. 기본은 호출하지 않으며 실제 Gemini 결과는 미검증이다. |
+| 승인 결과 공개 계약 | [Java 변환기](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java), [조회 컨트롤러](../../src/main/java/com/fitmeet/briefing/BriefingController.java), [계약 시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingPublicationTest.java) | 승인된 DB 요약을 기존 웹 JSON 형식으로 바꾸고 인용 URL을 SEC HTTPS 원문으로 제한하는 코드를 작성했다. 실제 웹 공개·실자료 종단 결과는 이후에 기록한다. |
 
 ## 현재 사용할 수 있는 문구
 

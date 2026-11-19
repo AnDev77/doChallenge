@@ -44,6 +44,7 @@ server:
 
 app:
   briefing:
+    public-provider: ${BRIEFING_PUBLIC_PROVIDER:python}
     ingestion:
       run-once: false
       user-agent: ${SEC_USER_AGENT:}
