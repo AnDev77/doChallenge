@@ -215,3 +215,4 @@
 - **설계 이유·기능:** `BRIEFING_CHAT_PROVIDER=google-genai`로 명시적으로 공급자를 바꿔 같은 `ChatModel`·초안 검사를 재사용한다. 기본 기동은 외부 호출 없이 유지한다. JSON MIME을 요청해도 JSON/인용 검사는 Java에서 계속 수행한다. 실험 전에 모델 이름·키·무료 한도와 데이터 정책을 확인한다.
 - **Learner's High 대조:** p. 13의 모델 비용과 결과 품질 비교 질문에 맞춰 공급자 전환 경계를 준비했다. 실제 두 모델의 품질·가격을 비교했다고 주장하지 않는다. 원본의 기술을 복제한 것도 아니다.
 - **검증·한계:** 가짜 키를 쓴 [Gemini 공급자 컨텍스트 시험](src/test/java/com/fitmeet/briefing/generation/GeminiProviderContextTest.java)을 추가했다. 로컬 `bash gradlew test bootJar --no-daemon`은 Gradle 배포 파일 다운로드가 네트워크 제한으로 실패해 시험을 시작하지 못했다. 이번 PR의 원격 Java 전체 시험·JAR 및 Compose/Blue/Green 결과를 따로 확인한다. API 키가 없어 실제 Gemini 응답·지연·비용·한글 품질·문장/근거 의미 일치, 인증된 검토·공개 조회, Kafka는 미검증이다. 실행 코드의 생성·저장 규칙과 DB 마이그레이션은 바꾸지 않았다.
+- **원격 확인:** PR #33의 코드 커밋 `8b542f2`에서 Java 전체 시험/JAR, 후보 이미지, 첫 배포 스택, Compose 인수, Blue/Green 전환, 스키마 게이트, 이메일 가입의 일곱 워크플로가 모두 성공했다. 이는 가짜 키로 앱 컨텍스트가 Gemini `ChatModel`을 선택한 시험과 기본 비활성 기동의 검증이지 실제 Gemini API 통신·품질 검증은 아니다. 이 결과 기록 커밋의 새 게이트는 별도로 확인한다.
