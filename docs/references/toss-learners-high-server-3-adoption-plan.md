@@ -6,6 +6,8 @@
 > **프로젝트:** [AnDev77/ShockGarph_AI](https://github.com/AnDev77/ShockGarph_AI)  
 > **상태 근거:** 2026-10-27에 확인한 저장소 `README.md`, `AGENTS.md`, `docs/product-ui-direction.md`, `docs/project-flow.md`, `docs/shareholder-community-roadmap.md`, `docs/autonomous-development-scorecard.md`.
 
+> **현재 구현과의 대조:** 이 문서는 당시 제안으로 보존한다. 2026-11-19 기준 Java 저장소의 실제 적용 여부와 미검증 항목은 [원본 PDF 대조·구현 근거표](learners-high-implementation-map.md)를 참조한다. 아래의 과거 Kafka/RabbitMQ·DB·Python 역할 제약은 최신 사용자 결정과 구현 상태가 아니다.
+
 ## 0. 기존 ShockGraph AI 개발 대화에 전달할 요청
 
 **이 문서를 기존 ShockGraph AI 개발 계획에 반영하되, 바로 전체 구현을 시작하거나 기존 연구·제품 방향을 임의 변경하지 말 것.** 먼저 다음을 수행한다.
