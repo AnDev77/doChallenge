@@ -1,5 +1,12 @@
 # Learner's High 개발 대조 기록
 
+## 2026-11-20 — CAMT 화면 연결을 위한 Java 목록 계약
+
+- **원본 p. 6:** 데이터 정합성·중복 처리 질문을 화면 진입 여부와 실제 승인 상태를 분리하는 데 적용했다. 원본에 이 프론트 계약이 있는 것은 아니다.
+- **우리 문제:** 승인 GET 코드가 있어도 공개 종목 목록의 CAMT `briefing=false` 때문에 웹에서 패널을 볼 수 없었다.
+- **선택·검증:** [InstrumentCatalog](../../src/main/java/com/fitmeet/instruments/InstrumentCatalog.java)는 Java 공개 모드일 때 CAMT만 지원으로 표시한다. [HTTP 시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingHttpIntegrationTest.java)은 미승인 상태와 승인 SEC 인용을 확인한다. [한 종목 흐름 시험](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java)은 합성 원문부터 승인 공개 GET까지의 상태 순서를 확인한다. 실제 원문·모델 생성·사람 검토·외부 브라우저는 미검증이다.
+
+
 ## 2026-11-20 — 비웹 운영자 초안·검토 경로
 
 - **원본 p. 6:** 저장 정합성과 중복 처리에 관한 질문을 검토 시점의 원문 검증과 연결했다. 원본이 사람 검토 도구나 CLI 구조를 제시한 것은 아니다.
