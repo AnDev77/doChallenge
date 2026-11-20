@@ -31,7 +31,7 @@ docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/com
 | Java 21 | 인증·QQQ/SPY 메시지 API·STOMP | 내부 네트워크만; 실 DB와 Redis 연결 시에만 health UP |
 | Nginx | HTTPS, `/api/`·`/ws` 프록시와 메일 발송 제한 | 공개 443, 80은 HTTPS 이동만 제공. 인증서 파일이 필요 |
 
-동일 서버에 서버 원본을 체크아웃하고 `deploy/.env.example`을 `deploy/.env`로 복사해 **서버에서만** 실제 값을 입력한다. 예시값을 실제 배포에 쓰지 않는다. `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET`은 서로 다른 무작위 값으로 발급하고 파일 권한을 제한한다. API 도메인의 유효한 TLS 인증서를 발급하고 `TLS_CERT_PATH`·`TLS_KEY_PATH`에 서버의 절대 경로를 적는다. SMTP는 사용자가 승인한 발신 계정과 실제 시험 수신처만 이용한다. React Vercel 빌드에는 `VITE_AUTH_ENABLED=true`와 `VITE_AUTH_API_BASE_URL=https://<승인된 API 호스트>/api/v1/auth`가 필요하다. 이 값은 브라우저 공개값이며 비밀을 넣지 않는다.
+동일 서버에 서버 원본을 체크아웃하고 `deploy/.env.example`을 `deploy/.env`로 복사해 **서버에서만** 실제 값을 입력한다. 예시값을 실제 배포에 쓰지 않는다. `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET`은 서로 다른 무작위 값으로 발급하고 파일 권한을 제한한다. API 도메인의 유효한 TLS 인증서를 발급하고 `TLS_CERT_PATH`·`TLS_KEY_PATH`에 서버의 절대 경로를 적는다. SMTP는 사용자가 승인한 발신 계정과 실제 시험 수신처만 이용한다. React Vercel 빌드에는 `VITE_AUTH_ENABLED=true`와 `VITE_AUTH_API_BASE_URL=https://<승인된 API 호스트>/api/v1/auth`가 필요하다. 이 값은 브라우저 공개값이며 비밀을 넣지 않는다. `BRIEFING_PUBLIC_PROVIDER`는 기본 `python`이며, Java 승인 결과를 공개할 준비가 된 배포에서만 서버의 `deploy/.env`에 `java`를 설정하고 API 컨테이너를 재생성한다. 이때 승인된 초안이 없으면 CAMT 조회는 HTTP 200에 `insufficient_sources` 상태를 돌려준다. HTTP 200만으로 공개 성공을 판정하지 않는다.
 
 ```bash
 cp deploy/.env.example deploy/.env

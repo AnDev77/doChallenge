@@ -238,3 +238,11 @@
 - 설계 이유: 목록 플래그는 기능 지원 여부이고 실제 게시 여부는 기존 `BriefingDraftService.latestApproved`가 판단한다. Java 모드를 켰어도 승인 초안이 없으면 `insufficient_sources`를 반환한다. 실제 데이터가 없는 상태에서 가짜 ready를 공개하지 않는다.
 - 시험·한계: 원격 PR의 Java 21 전체 시험, JAR·후보 이미지, Compose·스키마·Blue/Green 게이트를 확인한다. HTTP 계약 시험의 승인 응답은 합성 저장 객체이고 한 종목 흐름 시험의 SEC 본문·모델 출력도 합성이다. 실제 CAMT SEC/LLM/운영 승인 또는 웹 배포 증거는 아니다.
 - Learner's High 대조: DB/Storage p. 6 정합성 질문을 종목 지원 플래그와 검토 상태 분리에 적용했다. [대조 기록](docs/references/learners-high-development-log.md), [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)에도 확인 범위를 별도 기록한다. 실제 품질·비용·부하 비교는 이번 범위 밖이다.
+
+# CAMT 공개 공급자 배포 설정 (2026-11-20)
+
+- 시작·원인: EC2의 MySQL·Redis·Java·HTTPS가 기동되어 QQQ와 CAMT GET은 HTTP 200이었지만, CAMT 본문은 `pending`이었다. 공개 응답의 기본 공급자 `python`이 선택되고 Compose에서 `BRIEFING_PUBLIC_PROVIDER`를 컨테이너에 전달하지 않는 구조를 코드로 확인했다. 운영 호스트의 실제 브리핑 DB 상태를 직접 조회한 것은 아니다.
+- 변경 파일·구조: [단일 Compose](deploy/compose.yaml), [Blue/Green Compose](deploy/compose.bluegreen.yaml)에 동일한 공개 공급자 환경 전달을 추가하고 [예시 환경](deploy/.env.example)은 `python`을 유지한다. [배포 절차](deploy/README.md)는 Java 모드의 `insufficient_sources`와 HTTP 200의 의미를 명시한다. CAMT 종목 목록과 승인된 결과 공개 코드는 위 항목에서 다룬다.
+- 이유·기능: 서버 전용 `.env`에서 `java`를 명시할 때만 기존 Java 승인 결과 조회를 선택한다. 초안을 자동 승인하거나 모델 호출을 GET에 연결하지 않는다. `python` 기본값은 기존 배포와 호환한다.
+- 검증·한계: PyYAML로 단일·Blue/Green의 세 API 서비스에 공개 공급자 전달값과 기본 `python`을 확인했고 `git diff --check`를 통과했다. 로컬 Gradle 배포 파일 다운로드가 네트워크 제한으로 실패해 Java 전체 시험/JAR은 원격 PR 게이트에서 확인해야 한다. 실제 EC2의 `.env` 수정·재배포, SEC 수집, Gemini 호출, 사람이 근거를 대조한 승인, Vercel의 종목 목록 연결은 아직 완료로 기록하지 않는다. 운영에서 `java`만 켜면 초안이 없을 때 `insufficient_sources`가 정상이다.
+- Learner's High 대조: DB/Storage p. 6의 상태 정합성 질문을 HTTP 성공과 승인 데이터 성공의 구분에 적용했다. [개발 대조 기록](docs/references/learners-high-development-log.md)과 [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)에 계획/검증 범위를 분리해 기록한다. 실제 품질·비용 비교는 직접 적용 없음.

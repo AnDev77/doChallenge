@@ -31,6 +31,7 @@ services:
     restart: unless-stopped
     environment: &api_environment
       SPRING_PROFILES_ACTIVE: prod
+      BRIEFING_PUBLIC_PROVIDER: ${BRIEFING_PUBLIC_PROVIDER:-python}
       DB_HOST: mysql
       DB_NAME: ${DB_NAME:-doChallenge}
       DB_USER: ${DB_USER:?DB_USER is required}
