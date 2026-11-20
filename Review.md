@@ -234,7 +234,7 @@
 # CAMT Java 브리핑 프론트 연결 (2026-11-20)
 
 - 시작: main `e990971`(#35 병합)을 기준으로 시작. 기존 Java 승인 결과 GET은 있었지만 종목 목록의 CAMT `briefing=false`로 웹 패널이 숨겨졌다. `BRIEFING_PUBLIC_PROVIDER` 기본값은 Python이며, 실제 공급자 키·SEC 수집·운영 DB·웹 배포는 확인되지 않았다.
-- 변경 파일·구조: [InstrumentCatalog](src/main/java/com/fitmeet/instruments/InstrumentCatalog.java)가 Java 공개 모드일 때 CAMT에만 `briefing=true`를 내려준다. [Java HTTP 통합 시험](src/test/java/com/fitmeet/briefing/JavaBriefingHttpIntegrationTest.java)은 목록 노출, 미승인 비공개, 승인된 CAMT의 웹 JSON·SEC 인용·CORS를 확인한다. 다른 종목은 숨긴다.
+- 변경 파일·구조: [InstrumentCatalog](src/main/java/com/fitmeet/instruments/InstrumentCatalog.java)가 Java 공개 모드일 때 CAMT에만 `briefing=true`를 내려준다. [Java HTTP 통합 시험](src/test/java/com/fitmeet/briefing/JavaBriefingHttpIntegrationTest.java)은 목록 노출, 미승인 비공개, 승인된 CAMT의 웹 JSON·SEC 인용·CORS를 확인한다. [한 종목 흐름 시험](src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java)은 합성 SEC 원문 저장→청크 준비→키워드 검색→가짜 모델 초안→해시 승인→실제 컨트롤러 GET을 한 DB에서 순서대로 호출한다. 다른 종목은 숨긴다.
 - 설계 이유: 목록 플래그는 기능 지원 여부이고 실제 게시 여부는 기존 `BriefingDraftService.latestApproved`가 판단한다. Java 모드를 켰어도 승인 초안이 없으면 `insufficient_sources`를 반환한다. 실제 데이터가 없는 상태에서 가짜 ready를 공개하지 않는다.
-- 시험·한계: 원격 PR의 Java 21 전체 시험, JAR·후보 이미지, Compose·스키마·Blue/Green 게이트를 확인한다. 이 시험의 승인 응답은 합성 저장 객체이며 실제 CAMT SEC/LLM/운영 승인 또는 웹 배포 증거가 아니다.
+- 시험·한계: 원격 PR의 Java 21 전체 시험, JAR·후보 이미지, Compose·스키마·Blue/Green 게이트를 확인한다. HTTP 계약 시험의 승인 응답은 합성 저장 객체이고 한 종목 흐름 시험의 SEC 본문·모델 출력도 합성이다. 실제 CAMT SEC/LLM/운영 승인 또는 웹 배포 증거는 아니다.
 - Learner's High 대조: DB/Storage p. 6 정합성 질문을 종목 지원 플래그와 검토 상태 분리에 적용했다. [대조 기록](docs/references/learners-high-development-log.md), [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)에도 확인 범위를 별도 기록한다. 실제 품질·비용·부하 비교는 이번 범위 밖이다.
