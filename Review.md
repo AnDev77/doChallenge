@@ -231,3 +231,10 @@
 - 요청에서 달라진 점·오류: 선행 PR이 이미 main에 병합돼 별도 누적 브랜치 대신 main 기반 작업 브랜치를 만들었다. 처음 `./gradlew` 직접 실행은 실행 비트가 없어 실패했고 `bash gradlew --offline`은 Gradle 8.5 배포 파일이 없어 네트워크 제한으로 로컬 실행이 막혔다. 원격 CI 결과를 이 문서에 추후 기록한다.
 - 실제 검증과 한계: H2 통합 시험은 생성→비공개→근거 열람→승인→공개, 중복 승인 거절, 웹 실행·동시 수집 거절, 잘못된 확인값과 원문 손상 시 승인 거절을 검사한다. 운영 DB/SEC/Gemini 호출·사람의 의미 판단·신원 인증·실제 웹 화면은 검증하지 않았다. CLI의 `reviewer`는 서버 접근자가 입력하는 감사값이므로 별도 인증 UI라고 주장할 수 없다.
 - Learner's High 대조: 원본 DB/Storage p. 6의 정합성·중복 질문에 맞춰 이미 구현된 DB 조건부 승인 앞에 운영자 원문 재확인을 추가했다([대조표](docs/references/learners-high-implementation-map.md), [별도 대조 기록](docs/references/learners-high-development-log.md)). 원본 AI p. 13의 모델 비용·품질 비교는 이번 변경에 직접 적용하지 않았다. 실제 품질·비용 수치는 없으며 CI 통과도 사람 검토 실증은 아니다.
+# CAMT Java 브리핑 프론트 연결 (2026-11-20)
+
+- 시작: main `e990971`(#35 병합)을 기준으로 시작. 기존 Java 승인 결과 GET은 있었지만 종목 목록의 CAMT `briefing=false`로 웹 패널이 숨겨졌다. `BRIEFING_PUBLIC_PROVIDER` 기본값은 Python이며, 실제 공급자 키·SEC 수집·운영 DB·웹 배포는 확인되지 않았다.
+- 변경 파일·구조: [InstrumentCatalog](src/main/java/com/fitmeet/instruments/InstrumentCatalog.java)가 Java 공개 모드일 때 CAMT에만 `briefing=true`를 내려준다. [Java HTTP 통합 시험](src/test/java/com/fitmeet/briefing/JavaBriefingHttpIntegrationTest.java)은 목록 노출, 미승인 비공개, 승인된 CAMT의 웹 JSON·SEC 인용·CORS를 확인한다. 다른 종목은 숨긴다.
+- 설계 이유: 목록 플래그는 기능 지원 여부이고 실제 게시 여부는 기존 `BriefingDraftService.latestApproved`가 판단한다. Java 모드를 켰어도 승인 초안이 없으면 `insufficient_sources`를 반환한다. 실제 데이터가 없는 상태에서 가짜 ready를 공개하지 않는다.
+- 시험·한계: 원격 PR의 Java 21 전체 시험, JAR·후보 이미지, Compose·스키마·Blue/Green 게이트를 확인한다. 이 시험의 승인 응답은 합성 저장 객체이며 실제 CAMT SEC/LLM/운영 승인 또는 웹 배포 증거가 아니다.
+- Learner's High 대조: DB/Storage p. 6 정합성 질문을 종목 지원 플래그와 검토 상태 분리에 적용했다. [대조 기록](docs/references/learners-high-development-log.md), [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)에도 확인 범위를 별도 기록한다. 실제 품질·비용·부하 비교는 이번 범위 밖이다.
