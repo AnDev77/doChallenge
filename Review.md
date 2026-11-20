@@ -223,3 +223,11 @@
 - **실행 흐름과 이유:** GET은 승인된 DB 초안만 읽고 LLM을 호출하지 않는다. Java 요약 문자열과 숫자 청크 ID를 기존 React의 요약 배열·문자열 인용 ID·출처 목록으로 변환한다. 검증되지 않은 상승/하락 요인은 비워 두고 방향은 판단 보류로 둔다. 원문 링크는 SEC HTTPS 호스트로 제한한다. 1,000자 초과 초안과 잘못된 출처는 실패 상태만 반환한다. 승인된 초안이 없으면 자료 부족 상태다.
 - **Learner's High 대조:** p. 6의 DB 정합성과 p. 13의 결과 품질 질문을 공개 응답 경계에 적용했다. 웹의 인용 ID와 검토된 스냅샷을 연결하고 공개 조회의 모델 재호출을 막는다. 이것은 토스 사례의 코드를 재현한 것이 아니다.
 - **검증과 한계:** 승인 데이터의 JSON 계약과 미승인·비 SEC 링크 차단을 시험에 넣었다. 로컬 Gradle 다운로드가 차단되어 원격 CI에서 전체 Java 회귀를 확인한다. 실제 SEC 수집·실 Gemini 호출·운영 승인·배포 및 프론트 공개는 별도 인수다. 사람이 의미를 확인할 인증 UI가 아직 없으므로 현재 승인 메서드의 reviewer 인자만으로 운영 검토를 완료했다고 간주하지 않는다.
+# 비웹 CAMT 브리핑 운영자 실행 경로 (2026-11-20)
+
+- 시작 상태·작업량: Java main `1b6f819`(#32~#34 병합)에서 시작했다. 사용자 요청의 다음 단계는 실제 SEC 근거에 대해 기존 Java 생성 서비스를 운영자가 실행하고 승인 전후의 공개 조회를 확인할 수 있는 경로다. 이 작업은 새로운 공개 API·Kafka·배포를 포함하지 않는다.
+- 변경 파일·구조: [운영자 명령](src/main/java/com/fitmeet/briefing/operator/BriefingOperatorRunner.java)이 `generate` → [초안 생성](src/main/java/com/fitmeet/briefing/generation/BriefingGenerationService.java), `inspect`/`approve` → [저장·승인 서비스](src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java)를 호출한다. [실행 절차](docs/briefing/java-operator-runbook.md), [동작 시험](src/test/java/com/fitmeet/briefing/operator/BriefingOperatorRunnerTest.java), 제품 방향·AGENTS 및 별도 Learner's High/포트폴리오 기록도 갱신했다.
+- 설계 선택: Spring의 `ApplicationRunner`를 `app.briefing.operator.action` 지정 시에만 등록한다. 비웹 실행을 강제하고 SEC run-once와 동시 실행을 거부한다. 생성은 설정된 공급자와 질의가 있어야 실행하고 새 초안을 **DRAFT**로만 저장한다. 열람은 저장된 인용 원문·시각·URL·SHA-256을 대조해 본문을 보여준다. 승인은 검토자가 본 ID·해시를 다시 명시해야 하고, 같은 근거의 원문 메타데이터와 텍스트 해시를 재검사한 뒤 기존 조건부 승인을 호출한다. 공개 GET의 승인 상태 조건은 그대로 사용한다.
+- 요청에서 달라진 점·오류: 선행 PR이 이미 main에 병합돼 별도 누적 브랜치 대신 main 기반 작업 브랜치를 만들었다. 처음 `./gradlew` 직접 실행은 실행 비트가 없어 실패했고 `bash gradlew --offline`은 Gradle 8.5 배포 파일이 없어 네트워크 제한으로 로컬 실행이 막혔다. 원격 CI 결과를 이 문서에 추후 기록한다.
+- 실제 검증과 한계: H2 통합 시험은 생성→비공개→근거 열람→승인→공개, 중복 승인 거절, 웹 실행·동시 수집 거절, 잘못된 확인값과 원문 손상 시 승인 거절을 검사한다. 운영 DB/SEC/Gemini 호출·사람의 의미 판단·신원 인증·실제 웹 화면은 검증하지 않았다. CLI의 `reviewer`는 서버 접근자가 입력하는 감사값이므로 별도 인증 UI라고 주장할 수 없다.
+- Learner's High 대조: 원본 DB/Storage p. 6의 정합성·중복 질문에 맞춰 이미 구현된 DB 조건부 승인 앞에 운영자 원문 재확인을 추가했다([대조표](docs/references/learners-high-implementation-map.md), [별도 대조 기록](docs/references/learners-high-development-log.md)). 원본 AI p. 13의 모델 비용·품질 비교는 이번 변경에 직접 적용하지 않았다. 실제 품질·비용 수치는 없으며 CI 통과도 사람 검토 실증은 아니다.

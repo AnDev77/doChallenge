@@ -1,5 +1,13 @@
 # Learner's High 개발 대조 기록
 
+## 2026-11-20 — 비웹 운영자 초안·검토 경로
+
+- **원본 p. 6:** 저장 정합성과 중복 처리에 관한 질문을 검토 시점의 원문 검증과 연결했다. 원본이 사람 검토 도구나 CLI 구조를 제시한 것은 아니다.
+- **우리 문제:** DB에는 해시 조건부 승인 메서드가 있어도 실제 운영자는 초안 생성·인용 근거 열람 경로가 없었다.
+- **선택·코드:** [운영자 명령](../../src/main/java/com/fitmeet/briefing/operator/BriefingOperatorRunner.java)은 비웹·명시적 액션만 받고, 인용 청크 텍스트·메타데이터를 다시 확인한 뒤 기존 승인 서비스를 호출한다. [시험](../../src/test/java/com/fitmeet/briefing/operator/BriefingOperatorRunnerTest.java)은 승인 전/후 공개 상태와 손상 거절을 확인한다.
+- **검증 상태:** 로컬 Gradle 다운로드가 차단돼 원격 Java 회귀 결과를 별도로 확인한다. 서버 접근자 신원과 입력된 검토자 ID의 일치, 사람의 의미 판단, 실제 SEC/Gemini 호출은 검증하지 않았다.
+
+
 이 문서는 사용자 제공 *Learner's High 서버 3기 세션자료*의 질문을 개발 판단에 어떻게 사용했는지만 기록한다. 페이지별 현재 구현은 [구현 대조표](learners-high-implementation-map.md)에 있고, 이력서·포트폴리오에 쓸 표현은 [별도 근거 문서](../portfolio/java-rag-briefing-evidence.md)에 둔다. 토스의 구현을 동일하게 재현했다는 주장은 하지 않는다.
 
 ## 2026-11-19 — 브리핑 모델 공급자 추가
