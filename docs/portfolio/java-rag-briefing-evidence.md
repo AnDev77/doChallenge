@@ -12,6 +12,7 @@
 | 승인 결과 공개 계약 | [Java 변환기](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java), [조회 컨트롤러](../../src/main/java/com/fitmeet/briefing/BriefingController.java), [계약 시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingPublicationTest.java) | 승인된 DB 요약을 기존 웹 JSON 형식으로 바꾸고 인용 URL을 SEC HTTPS 원문으로 제한하는 코드를 작성했다. 실제 웹 공개·실자료 종단 결과는 이후에 기록한다. |
 | 비웹 운영자 초안 실행·근거 확인 | [운영자 명령](../../src/main/java/com/fitmeet/briefing/operator/BriefingOperatorRunner.java), [작업 흐름 시험](../../src/test/java/com/fitmeet/briefing/operator/BriefingOperatorRunnerTest.java) | 수집 이후 Java 모델 초안 호출, 저장된 인용 본문 확인, ID·해시를 지정한 승인을 분리한 명령을 작성했다. 서버 접속자 신원 인증·실자료 호출·운영 사람 검토 완료를 증명하지는 않는다. |
 | CAMT 종목 목록과 브리핑 계약 | [종목 목록](../../src/main/java/com/fitmeet/instruments/InstrumentCatalog.java), [HTTP 계약 시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingHttpIntegrationTest.java), [한 종목 흐름](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java) | Java 공개 모드에서 CAMT만 브리핑 가능으로 알려주고 합성 SEC 근거로 초안·승인 전후 GET을 검증한다. 실제 운영 화면 표시 주장은 배포 후 별도 확인한다. |
+| Java 공개 공급자 선택 전달 | [단일 Compose](../../deploy/compose.yaml), [Blue/Green 구성](../../deploy/compose.bluegreen.yaml), [배포 절차](../../deploy/README.md) | 운영 `.env`가 `java`를 선택할 때만 Java 승인 결과 조회를 사용하도록 배포 설정을 추가했다. EC2에서 실제 설정을 전환하거나 실공시 결과를 공개한 증거는 아직 없다. |
 
 ## 현재 사용할 수 있는 문구
 
@@ -24,6 +25,10 @@
 - “Kafka 기반 비동기 생성”, “환각을 제거했다”, “금융 예측 정확도를 입증했다”: 해당 구현이나 의미 평가가 없다.
 
 실제 모델 평가 후 같은 고정 자료의 성공/실패 건수, 근거 일치 판정 기준, 토큰·지연, 평가 날짜와 실행 환경을 채워 문구를 수정한다. 측정치가 없으면 개선율을 만들지 않는다.
+
+## 2026-11-24 CAMT 기간 선택 변경
+
+운영자 생성의 명시적 30일 검색과 저장 전 같은 기간 재검색, Java 공개 API의 `30d` 승인 결과·오래된 근거 `stale` 표기를 구현했다. 20일 전 접수·방금 수집한 **합성** 공시에 대한 시험을 추가했으며 원격 CI/실제 운영 결과는 별도로 확인한다. 실제 CAMT 공시를 DB에 수집하거나 Gemini 결과를 검토했다는 표현은 사용하지 않는다.
 
 ## 2026-11-24 운영 수집 자동화 준비
 

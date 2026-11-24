@@ -36,6 +36,12 @@ public class BriefingDraftService {
     /** Select citations only from the same bounded, as-of retrieval that supplied the draft. */
     @Transactional
     public Draft create(String symbol, String query, Instant asOf, String summary, List<Long> citedChunkIds) {
+        return create(symbol, query, asOf, summary, citedChunkIds, 7);
+    }
+
+    @Transactional
+    public Draft create(String symbol, String query, Instant asOf, String summary, List<Long> citedChunkIds,
+                        int lookbackDays) {
         if (summary == null || summary.isBlank() || summary.length() > 4000
                 || citedChunkIds == null || citedChunkIds.isEmpty() || citedChunkIds.size() > 8
                 || citedChunkIds.stream().anyMatch(id -> id == null || id <= 0)
@@ -43,8 +49,9 @@ public class BriefingDraftService {
             throw new IllegalArgumentException("Invalid draft or citation IDs");
         }
         if (asOf == null) throw new IllegalArgumentException("Missing as-of time");
+        if (lookbackDays < 1 || lookbackDays > 365) throw new IllegalArgumentException("Invalid lookback days");
         Instant snapshot = asOf.truncatedTo(ChronoUnit.MICROS); // MySQL DATETIME(6) precision.
-        var candidates = retriever.search(symbol, query, snapshot, 7, 8);
+        var candidates = retriever.search(symbol, query, snapshot, lookbackDays, 8);
         var cited = new ArrayList<Evidence>();
         for (long id : citedChunkIds) {
             cited.add(candidates.stream().filter(e -> e.chunkId() == id).findFirst()

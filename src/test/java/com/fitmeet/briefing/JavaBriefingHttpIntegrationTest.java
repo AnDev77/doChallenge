@@ -43,7 +43,8 @@ class JavaBriefingHttpIntegrationTest {
                 .andExpect(jsonPath("$.status").value("insufficient_sources"))
                 .andExpect(jsonPath("$.summary").doesNotExist());
         mvc.perform(get("/api/v1/briefings/CAMT").param("window", "30d"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("insufficient_sources"));
     }
 
     @Test

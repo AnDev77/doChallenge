@@ -14,6 +14,12 @@
 - **선택·코드:** [운영자 명령](../../src/main/java/com/fitmeet/briefing/operator/BriefingOperatorRunner.java)은 비웹·명시적 액션만 받고, 인용 청크 텍스트·메타데이터를 다시 확인한 뒤 기존 승인 서비스를 호출한다. [시험](../../src/test/java/com/fitmeet/briefing/operator/BriefingOperatorRunnerTest.java)은 승인 전/후 공개 상태와 손상 거절을 확인한다.
 - **검증 상태:** 로컬 Gradle 다운로드가 차단돼 원격 Java 회귀 결과를 별도로 확인한다. 서버 접근자 신원과 입력된 검토자 ID의 일치, 사람의 의미 판단, 실제 SEC/Gemini 호출은 검증하지 않았다.
 
+## 2026-11-20 — CAMT 운영 공급자 설정
+
+- **원본 p. 6:** 저장 상태의 정합성 질문을 운영 HTTP 상태와 공개 데이터 상태의 구분에 적용했다. 원본이 이 환경변수나 배포 구성을 제안한 것은 아니다.
+- **우리 문제·선택:** CAMT GET은 HTTP 200이지만 기본 Python 공급자에서 `pending`을 반환할 수 있다. [Compose](../../deploy/compose.yaml)와 [Blue/Green 구성](../../deploy/compose.bluegreen.yaml)이 `BRIEFING_PUBLIC_PROVIDER`를 API 컨테이너에 넘기게 하고 기본은 `python`으로 유지했다.
+- **검증 범위:** Compose 설정과 CI를 확인할 예정이다. 운영에서 `java` 선택, 실제 자료·검토·승인, 외부 웹 화면의 `ready`는 별도 실증 대상이다.
+
 
 이 문서는 사용자 제공 *Learner's High 서버 3기 세션자료*의 질문을 개발 판단에 어떻게 사용했는지만 기록한다. 페이지별 현재 구현은 [구현 대조표](learners-high-implementation-map.md)에 있고, 이력서·포트폴리오에 쓸 표현은 [별도 근거 문서](../portfolio/java-rag-briefing-evidence.md)에 둔다. 토스의 구현을 동일하게 재현했다는 주장은 하지 않는다.
 
@@ -31,6 +37,12 @@
 - **문제:** DB의 승인 초안은 단일 문자열 요약과 숫자 청크 ID인 반면, 웹은 근거별 문자열 ID와 HTTPS 출처를 요구한다.
 - **선택:** [공개 변환기](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java)가 저장된 승인 버전을 기존 [GET](../../src/main/java/com/fitmeet/briefing/BriefingController.java)의 계약으로 변환한다. [시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingPublicationTest.java)은 승인 결과와 비공개·잘못된 링크를 다룬다.
 - **판정:** 코드와 시험을 PR로 검증한다. 실제 공시·모델·운영 조회의 종단 검증과 부하 수치는 기록되지 않았다.
+## 2026-11-24 — 접수 시각과 새 수집 시각을 분리한 CAMT 기간 조회
+
+- **원본 DB/Storage p. 6:** 정합성 질문을 근거 검색과 초안 저장 전 재검증의 기간 일치에 적용했다. 수집 시각이 오늘이어도 SEC 접수 시각이 20일 전이면 기본 7일 조회에 넣지 않는다.
+- **코드·시험:** [생성](../../src/main/java/com/fitmeet/briefing/generation/BriefingGenerationService.java), [초안 재검증](../../src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java), [공개 기간 판정](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java), [합성 흐름 시험](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java). Java 모드 `30d`를 명시한 경우에만 오래된 승인 공시를 `stale`로 반환한다.
+- **상태:** 코드와 시험 작성. 실제 EC2의 SEC 수집·모델 호출·승인·공개 GET은 미검증이며 원본이 이 금융 데이터 기간 규칙을 제안한 것은 아니다.
+
 ## 2026-11-24 — 운영 CAMT 수집의 중복·결과 확인
 
 - **원본 DB/Storage p. 6:** 중복과 정합성 질문을 반복 수집에 적용했다. [고정 SSM 작업](../../deploy/camt_ingest/run.py)은 Java의 기존 원문 해시·중복 차단과 청크 준비 검사를 호출하고, 준비된 문서의 SEC URL·접수/수집 시각·짧은 본문만 반환한다.

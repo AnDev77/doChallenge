@@ -63,6 +63,21 @@ class BriefingOperatorRunnerTest {
     }
 
     @Test
+    void operatorCanExplicitlyGenerateFromARecentlyCollectedOlderFiling() throws Exception {
+        Fixture fixture = new Fixture(directory);
+        long chunk = fixture.chunk(20);
+        MockEnvironment env = fixture.env("generate").withProperty("spring.ai.model.chat", "google-genai")
+                .withProperty("app.briefing.operator.symbol", "CAMT")
+                .withProperty("app.briefing.operator.query", "revenue");
+        BriefingOperatorRunner runner = fixture.runner(env, chunk);
+        assertThatThrownBy(() -> output(runner)).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No eligible evidence");
+        env.setProperty("app.briefing.operator.lookback-days", "30");
+        assertThat(output(runner)).contains("Created DRAFT");
+        assertThat(fixture.jdbc.queryForObject("SELECT COUNT(*) FROM briefing_draft", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
     void unsafeExecutionAndChangedEvidenceFailBeforeApproval() throws Exception {
         Fixture fixture = new Fixture(directory);
         long chunk = fixture.chunk();
@@ -113,9 +128,13 @@ class BriefingOperatorRunnerTest {
         }
 
         long chunk() throws Exception {
+            return chunk(0);
+        }
+
+        long chunk(int daysOld) throws Exception {
             var issuer = new SecIssuer("CAMT", "0001109138", Set.of("6-K"));
             var filing = new SecFiling(issuer, "0001109138-26-000001", "6-K",
-                    Instant.now().minusSeconds(3600), "report.htm");
+                    Instant.now().minusSeconds(daysOld * 86400L + 3600), "report.htm");
             var raw = new RawFilingStore().save(directory, "revenue evidence".getBytes(StandardCharsets.UTF_8));
             new FilingDocumentRepository(jdbc).save(filing, Instant.now().minusSeconds(1800), raw,
                     List.of("revenue evidence"));

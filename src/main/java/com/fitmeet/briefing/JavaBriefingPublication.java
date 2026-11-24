@@ -21,11 +21,23 @@ public class JavaBriefingPublication {
     }
 
     public ObjectNode lookup(String symbol) {
+        return lookup(symbol, 7);
+    }
+
+    public ObjectNode lookup(String symbol, int windowDays) {
+        if (windowDays != 7 && windowDays != 30) throw new IllegalArgumentException("Unsupported window");
         var approved = drafts.latestApproved(symbol);
         if (approved.isEmpty()) return state(symbol, "insufficient_sources");
         var draft = approved.get();
         if (draft.sources().isEmpty() || draft.summary().isBlank() || draft.summary().length() > 1000
                 || draft.sources().size() > 8) return state(symbol, "failed");
+
+        var now = clock.instant();
+        var cutoff = now.minus(Duration.ofDays(windowDays));
+        if (draft.sources().stream().anyMatch(source -> source.acceptedAt().isBefore(cutoff)
+                || source.acceptedAt().isAfter(now) || source.fetchedAt().isAfter(now))) {
+            return state(symbol, "insufficient_sources");
+        }
 
         var result = state(symbol, "ready");
         result.put("stance", "withheld");
@@ -54,7 +66,8 @@ public class JavaBriefingPublication {
         result.putArray("bearish_factors");
         result.putArray("change_conditions");
         result.put("generated_at", draft.asOf().toString());
-        result.put("freshness", Duration.between(draft.asOf(), clock.instant()).compareTo(Duration.ofDays(7)) > 0
+        result.put("freshness", draft.sources().stream().anyMatch(source ->
+                source.acceptedAt().isBefore(now.minus(Duration.ofDays(7))))
                 ? "stale" : "current");
         return result;
     }
