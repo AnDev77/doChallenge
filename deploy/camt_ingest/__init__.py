@@ -1,0 +1,1 @@
+"""Fixed CAMT SSM automation."""

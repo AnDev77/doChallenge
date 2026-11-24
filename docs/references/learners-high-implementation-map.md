@@ -19,6 +19,8 @@
 
 2026-11-24 추가: [운영자 생성](../../src/main/java/com/fitmeet/briefing/operator/BriefingOperatorRunner.java)과 [초안 재검증](../../src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java)에 동일한 명시적 기간을 전달하고, [공개 30일 조회](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java)는 근거의 SEC 접수 시각으로 기간과 `stale`을 판정한다. [합성 CAMT 흐름 시험](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java)을 추가했으나 실제 서버 수집·모델 호출·공개 결과는 아직 확인하지 않았다.
 
+2026-11-24 자동화 보충: [CAMT SSM 수집](../../deploy/camt_ingest/run.py)은 같은 Java 수집·준비 검사 경로를 반복 실행하고 SEC 원문 메타데이터·청크 한 건을 제한해 출력한다. [모의 시험](../../deploy/test_camt_ingest.py)은 이 고정 경로만 확인했다. 실제 운영 DB의 중복/무결성 결과는 첫 EC2 실행 전까지 미검증이다.
+
 ## 아직 적용했다고 말하면 안 되는 내용
 
 - **Kafka p. 4:** Java 브리핑 작업의 실제 producer/consumer, 영속 아웃박스, 재발행 멱등 키, DLQ, 순서·lag·rebalance 운영은 아직 없다. 현재 내부 생성 서비스는 동기 호출용이며 실행기도 없다.

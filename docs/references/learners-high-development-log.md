@@ -42,3 +42,8 @@
 - **원본 DB/Storage p. 6:** 정합성 질문을 근거 검색과 초안 저장 전 재검증의 기간 일치에 적용했다. 수집 시각이 오늘이어도 SEC 접수 시각이 20일 전이면 기본 7일 조회에 넣지 않는다.
 - **코드·시험:** [생성](../../src/main/java/com/fitmeet/briefing/generation/BriefingGenerationService.java), [초안 재검증](../../src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java), [공개 기간 판정](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java), [합성 흐름 시험](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java). Java 모드 `30d`를 명시한 경우에만 오래된 승인 공시를 `stale`로 반환한다.
 - **상태:** 코드와 시험 작성. 실제 EC2의 SEC 수집·모델 호출·승인·공개 GET은 미검증이며 원본이 이 금융 데이터 기간 규칙을 제안한 것은 아니다.
+
+## 2026-11-24 — 운영 CAMT 수집의 중복·결과 확인
+
+- **원본 DB/Storage p. 6:** 중복과 정합성 질문을 반복 수집에 적용했다. [고정 SSM 작업](../../deploy/camt_ingest/run.py)은 Java의 기존 원문 해시·중복 차단과 청크 준비 검사를 호출하고, 준비된 문서의 SEC URL·접수/수집 시각·짧은 본문만 반환한다.
+- **검증 상태:** [모의 시험](../../deploy/test_camt_ingest.py)은 명령·역할·응답 범위를 확인했다. 실제 AWS/SEC/운영 MySQL 수집은 아직 아니다. 이 자동화가 토스 원본의 코드라는 뜻이 아니다.

@@ -255,3 +255,12 @@
 - **요청에서 달라진 점·오류:** 앞서 새 수집을 불가능하다고 설명한 것은 잘못이었다. 수집은 가능하지만 7일 브리핑 생성과는 별개다. 저장 전 재검증에 남은 하드코딩 7일도 함께 수정했다. 프론트 연결·공개 최근 자료 여부는 이 단계에 포함하지 않는다.
 - **시험·미검증:** 20일 전 접수·방금 수집한 합성 CAMT 문서에 대해 기본 생성은 모델을 호출하지 않고, 명시적 30일 생성은 DRAFT만 저장하며, 승인 전·7일 조회는 비공개이고 승인된 30일 응답만 `ready`·`stale`·SEC 인용을 내는 통합 시험을 추가했다. 로컬 Gradle 8.5 배포 ZIP 다운로드가 네트워크 제한으로 실패해 Java 전체 시험·JAR는 원격 CI 결과를 확인해야 한다. 실제 SEC 수집·Gemini 호출·사람 승인·운영 API 응답은 아직 실행하지 않았다.
 - **Learner's High 대조:** 원본 DB/Storage p. 6의 정합성 질문을 공시 접수/수집 시각과 초안 재검증의 동일 기간 적용에 연결했다. [구현 대조표](docs/references/learners-high-implementation-map.md)와 [별도 개발 기록](docs/references/learners-high-development-log.md)을 갱신했다. 원본이 CAMT 30일 규칙을 제시한 것은 아니다. [포트폴리오 기록](docs/portfolio/java-rag-briefing-evidence.md)은 합성 시험까지만 완료형으로 쓴다.
+
+# CAMT 운영 SEC 수집을 GitHub Actions·SSM으로 실행 (2026-11-24)
+
+- **목표·시작:** 원격 main `b962053`, 열린 Java PR #37·#38, 제품 방향과 웹 주간 계획을 확인했다. 사용자 요청은 운영 터미널에 긴 수집·SQL 명령을 매번 입력하지 않고 CAMT 원문과 청크 본문을 반복 확인하는 것이다. 기존 SSM 사전 점검은 고정 상태값만, ECR 후보는 별도 DB만 다룬다.
+- **구조·바뀐 파일:** [워크플로](.github/workflows/camt-sec-ingest.yml)는 `main`의 수동 실행에서만 OIDC 역할을 받아 [고정 SSM 문서](deploy/camt_ingest/render_document.py)를 해시·버전으로 지정한다. [별도 IAM 템플릿](deploy/camt_ingest/render_stack.py)은 대상 문서·인스턴스로 `SendCommand`를 제한한다. [서버 작업](deploy/camt_ingest/run.py)은 CAMT 30일 수집 후 기존 운영 MySQL의 `KEYWORD_READY` 청크 한 건을 읽고 [호출자](deploy/camt_ingest/send.py)는 엄격한 JSON 결과만 공개한다. [설정·반복 절차](deploy/camt_ingest/README.md)와 [시험](deploy/test_camt_ingest.py)을 추가했다.
+- **이유·기능:** 기존 읽기 전용 SSM 역할을 임의 셸 실행에 재사용하지 않는다. SEC 연락처는 서버의 권한 제한된 `.env`에서 읽고 GitHub에 비밀값을 전달하지 않는다. 원문 파일을 서버의 지속 경로에 저장하고 Java의 기존 무결성·중복 검사를 재사용한다. SSM/GitHub 로그에는 1,000자 이하의 공개 SEC 본문과 메타데이터만 남긴다. 동시 실행을 GitHub와 호스트 양쪽에서 차단한다. LLM 호출·승인·트래픽 전환은 없다.
+- **사용자 요청과 다른 부분·제약:** 첫 AWS CloudFormation 역할·SSM 문서와 GitHub 환경, 서버 `SEC_USER_AGENT`는 계정 소유자가 한 번 설정해야 한다. 그 뒤 반복 실행은 Actions 버튼으로 처리한다. 아직 정기 스케줄은 첫 운영 성공 전 추가하지 않았다. 이 실행은 프론트 공개 브리핑이 아니다.
+- **시험·미검증:** Python 단위 6건은 환경 권한, 고정 명령, CAMT 출처와 출력 범위, IAM 분리, SSM 해시·응답 확인, 로컬 모의 실행을 통과했다. `git diff --check`를 확인했다. 실제 AWS 역할/문서 생성, EC2 SSM 실행, SEC/운영 MySQL 수집과 본문은 미검증이다. 원격 PR CI를 별도로 확인해야 한다.
+- **Learner's High 대조:** DB/Storage p. 6의 무결성·중복 질문을 기존 Java DB 검사 재사용과 고정된 수집 결과 확인에 적용했다. [대조 기록](docs/references/learners-high-development-log.md)과 [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)를 분리했다. 원본에 SSM/Actions 구현이 있었다고 주장하지 않는다.
