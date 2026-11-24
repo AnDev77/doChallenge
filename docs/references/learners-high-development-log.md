@@ -31,3 +31,7 @@
 - **문제:** DB의 승인 초안은 단일 문자열 요약과 숫자 청크 ID인 반면, 웹은 근거별 문자열 ID와 HTTPS 출처를 요구한다.
 - **선택:** [공개 변환기](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java)가 저장된 승인 버전을 기존 [GET](../../src/main/java/com/fitmeet/briefing/BriefingController.java)의 계약으로 변환한다. [시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingPublicationTest.java)은 승인 결과와 비공개·잘못된 링크를 다룬다.
 - **판정:** 코드와 시험을 PR로 검증한다. 실제 공시·모델·운영 조회의 종단 검증과 부하 수치는 기록되지 않았다.
+## 2026-11-24 — 운영 CAMT 수집의 중복·결과 확인
+
+- **원본 DB/Storage p. 6:** 중복과 정합성 질문을 반복 수집에 적용했다. [고정 SSM 작업](../../deploy/camt_ingest/run.py)은 Java의 기존 원문 해시·중복 차단과 청크 준비 검사를 호출하고, 준비된 문서의 SEC URL·접수/수집 시각·짧은 본문만 반환한다.
+- **검증 상태:** [모의 시험](../../deploy/test_camt_ingest.py)은 명령·역할·응답 범위를 확인했다. 실제 AWS/SEC/운영 MySQL 수집은 아직 아니다. 이 자동화가 토스 원본의 코드라는 뜻이 아니다.

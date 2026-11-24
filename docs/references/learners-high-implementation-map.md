@@ -15,6 +15,8 @@
 
 특히 `EvidenceRetriever.search`는 SEC 접수 시각과 **우리 시스템의 수집 시각**을 함께 제한하고, 같은 accession·파일명의 최신 수집본이 `PENDING`이면 이전 `READY`도 숨긴다([검색 코드](../../src/main/java/com/fitmeet/briefing/retrieval/EvidenceRetriever.java), [상세 설명](../briefing/java-keyword-retrieval.md)). 이는 p. 6의 정합성 질문을 금융 시점 재현에 맞춰 **독자적으로 확장한 판단**이다. SEC의 공식 수정 공시가 새 accession으로 제출된 경우의 옛 공시 숨김은 구현하지 않았다. 키워드 `LIKE` 검색의 512건 제한은 반환 후보 수 제한이지 MySQL 전체 스캔 방지가 아니다.
 
+2026-11-24 자동화 보충: [CAMT SSM 수집](../../deploy/camt_ingest/run.py)은 같은 Java 수집·준비 검사 경로를 반복 실행하고 SEC 원문 메타데이터·청크 한 건을 제한해 출력한다. [모의 시험](../../deploy/test_camt_ingest.py)은 이 고정 경로만 확인했다. 실제 운영 DB의 중복/무결성 결과는 첫 EC2 실행 전까지 미검증이다.
+
 ## 아직 적용했다고 말하면 안 되는 내용
 
 - **Kafka p. 4:** Java 브리핑 작업의 실제 producer/consumer, 영속 아웃박스, 재발행 멱등 키, DLQ, 순서·lag·rebalance 운영은 아직 없다. 현재 내부 생성 서비스는 동기 호출용이며 실행기도 없다.

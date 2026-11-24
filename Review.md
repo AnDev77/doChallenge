@@ -238,3 +238,11 @@
 - 설계 이유: 목록 플래그는 기능 지원 여부이고 실제 게시 여부는 기존 `BriefingDraftService.latestApproved`가 판단한다. Java 모드를 켰어도 승인 초안이 없으면 `insufficient_sources`를 반환한다. 실제 데이터가 없는 상태에서 가짜 ready를 공개하지 않는다.
 - 시험·한계: 원격 PR의 Java 21 전체 시험, JAR·후보 이미지, Compose·스키마·Blue/Green 게이트를 확인한다. HTTP 계약 시험의 승인 응답은 합성 저장 객체이고 한 종목 흐름 시험의 SEC 본문·모델 출력도 합성이다. 실제 CAMT SEC/LLM/운영 승인 또는 웹 배포 증거는 아니다.
 - Learner's High 대조: DB/Storage p. 6 정합성 질문을 종목 지원 플래그와 검토 상태 분리에 적용했다. [대조 기록](docs/references/learners-high-development-log.md), [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)에도 확인 범위를 별도 기록한다. 실제 품질·비용·부하 비교는 이번 범위 밖이다.
+# CAMT 운영 SEC 수집을 GitHub Actions·SSM으로 실행 (2026-11-24)
+
+- **목표·시작:** 원격 main `b962053`, 열린 Java PR #37·#38, 제품 방향과 웹 주간 계획을 확인했다. 사용자 요청은 운영 터미널에 긴 수집·SQL 명령을 매번 입력하지 않고 CAMT 원문과 청크 본문을 반복 확인하는 것이다. 기존 SSM 사전 점검은 고정 상태값만, ECR 후보는 별도 DB만 다룬다.
+- **구조·바뀐 파일:** [워크플로](.github/workflows/camt-sec-ingest.yml)는 `main`의 수동 실행에서만 OIDC 역할을 받아 [고정 SSM 문서](deploy/camt_ingest/render_document.py)를 해시·버전으로 지정한다. [별도 IAM 템플릿](deploy/camt_ingest/render_stack.py)은 대상 문서·인스턴스로 `SendCommand`를 제한한다. [서버 작업](deploy/camt_ingest/run.py)은 CAMT 30일 수집 후 기존 운영 MySQL의 `KEYWORD_READY` 청크 한 건을 읽고 [호출자](deploy/camt_ingest/send.py)는 엄격한 JSON 결과만 공개한다. [설정·반복 절차](deploy/camt_ingest/README.md)와 [시험](deploy/test_camt_ingest.py)을 추가했다.
+- **이유·기능:** 기존 읽기 전용 SSM 역할을 임의 셸 실행에 재사용하지 않는다. SEC 연락처는 서버의 권한 제한된 `.env`에서 읽고 GitHub에 비밀값을 전달하지 않는다. 원문 파일을 서버의 지속 경로에 저장하고 Java의 기존 무결성·중복 검사를 재사용한다. SSM/GitHub 로그에는 1,000자 이하의 공개 SEC 본문과 메타데이터만 남긴다. 동시 실행을 GitHub와 호스트 양쪽에서 차단한다. LLM 호출·승인·트래픽 전환은 없다.
+- **사용자 요청과 다른 부분·제약:** 첫 AWS CloudFormation 역할·SSM 문서와 GitHub 환경, 서버 `SEC_USER_AGENT`는 계정 소유자가 한 번 설정해야 한다. 그 뒤 반복 실행은 Actions 버튼으로 처리한다. 아직 정기 스케줄은 첫 운영 성공 전 추가하지 않았다. 이 실행은 프론트 공개 브리핑이 아니다.
+- **시험·미검증:** Python 단위 6건은 환경 권한, 고정 명령, CAMT 출처와 출력 범위, IAM 분리, SSM 해시·응답 확인, 로컬 모의 실행을 통과했다. `git diff --check`를 확인했다. 실제 AWS 역할/문서 생성, EC2 SSM 실행, SEC/운영 MySQL 수집과 본문은 미검증이다. 원격 PR CI를 별도로 확인해야 한다.
+- **Learner's High 대조:** DB/Storage p. 6의 무결성·중복 질문을 기존 Java DB 검사 재사용과 고정된 수집 결과 확인에 적용했다. [대조 기록](docs/references/learners-high-development-log.md)과 [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)를 분리했다. 원본에 SSM/Actions 구현이 있었다고 주장하지 않는다.

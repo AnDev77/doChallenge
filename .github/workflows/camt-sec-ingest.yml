@@ -1,0 +1,49 @@
+name: CAMT SEC production ingest
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/camt-sec-ingest.yml'
+      - 'deploy/camt_ingest/**'
+      - 'deploy/test_camt_ingest.py'
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: camt-sec-production-ingest
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Verify fixed SSM command and IAM scope
+        run: python3 -B -m unittest discover -s deploy -p test_camt_ingest.py -v
+
+  ingest:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ec2-camt-ingest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.AWS_CAMT_INGEST_ROLE_ARN }}
+          role-session-name: camt-ingest-${{ github.run_id }}
+          role-duration-seconds: 900
+          retry-max-attempts: 3
+      - name: Collect CAMT and show bounded SEC evidence
+        env:
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          AWS_CAMT_DOCUMENT_SHA256: ${{ vars.AWS_CAMT_DOCUMENT_SHA256 }}
+        run: python3 -B deploy/camt_ingest/send.py
