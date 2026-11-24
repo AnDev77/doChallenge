@@ -29,10 +29,12 @@ public class BriefingController {
     public ResponseEntity<ObjectNode> lookup(
             @PathVariable String symbol, @RequestParam(defaultValue = "7d") String window
     ) {
-        if (!"7d".equals(window) || !BriefingGateway.SYMBOLS.contains(symbol)) {
+        if ((!"7d".equals(window) && !(useJava && "30d".equals(window)))
+                || !BriefingGateway.SYMBOLS.contains(symbol)) {
             return ResponseEntity.badRequest().build();
         }
-        ObjectNode result = useJava ? javaPublication.lookup(symbol) : gateway.lookup(symbol);
+        ObjectNode result = useJava ? javaPublication.lookup(symbol, "30d".equals(window) ? 30 : 7)
+                : gateway.lookup(symbol);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
     }
 }
