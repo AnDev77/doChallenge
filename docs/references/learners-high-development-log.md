@@ -37,3 +37,8 @@
 - **문제:** DB의 승인 초안은 단일 문자열 요약과 숫자 청크 ID인 반면, 웹은 근거별 문자열 ID와 HTTPS 출처를 요구한다.
 - **선택:** [공개 변환기](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java)가 저장된 승인 버전을 기존 [GET](../../src/main/java/com/fitmeet/briefing/BriefingController.java)의 계약으로 변환한다. [시험](../../src/test/java/com/fitmeet/briefing/JavaBriefingPublicationTest.java)은 승인 결과와 비공개·잘못된 링크를 다룬다.
 - **판정:** 코드와 시험을 PR로 검증한다. 실제 공시·모델·운영 조회의 종단 검증과 부하 수치는 기록되지 않았다.
+## 2026-11-24 — 접수 시각과 새 수집 시각을 분리한 CAMT 기간 조회
+
+- **원본 DB/Storage p. 6:** 정합성 질문을 근거 검색과 초안 저장 전 재검증의 기간 일치에 적용했다. 수집 시각이 오늘이어도 SEC 접수 시각이 20일 전이면 기본 7일 조회에 넣지 않는다.
+- **코드·시험:** [생성](../../src/main/java/com/fitmeet/briefing/generation/BriefingGenerationService.java), [초안 재검증](../../src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java), [공개 기간 판정](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java), [합성 흐름 시험](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java). Java 모드 `30d`를 명시한 경우에만 오래된 승인 공시를 `stale`로 반환한다.
+- **상태:** 코드와 시험 작성. 실제 EC2의 SEC 수집·모델 호출·승인·공개 GET은 미검증이며 원본이 이 금융 데이터 기간 규칙을 제안한 것은 아니다.

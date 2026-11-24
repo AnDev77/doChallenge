@@ -1,6 +1,7 @@
 package com.fitmeet.briefing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -33,6 +34,47 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 /** Synthetic SEC-shaped CAMT input through the actual Java retrieval, draft and public GET chain. */
 class CamtBriefingFlowIntegrationTest {
     @TempDir Path directory;
+
+    @Test
+    void freshlyCollectedOlderFilingRequiresAnExplicitWindowAndReview() throws Exception {
+        var source = new DriverManagerDataSource("jdbc:h2:mem:camt-window-" + UUID.randomUUID()
+                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", "");
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V3__rag_source_documents.sql"),
+                new ClassPathResource("db/migration/V4__briefing_draft_review.sql")).execute(source);
+        var jdbc = new JdbcTemplate(source);
+        var issuer = new SecIssuer("CAMT", "0001109138", Set.of("6-K"));
+        var accepted = Instant.now().minusSeconds(20L * 86400);
+        var filing = new SecFiling(issuer, "0001109138-26-000002", "6-K", accepted, "report.htm");
+        var raw = new RawFilingStore().save(directory, "revenue evidence".getBytes(StandardCharsets.UTF_8));
+        assertThat(new FilingDocumentRepository(jdbc).save(filing, Instant.now().minusSeconds(60), raw,
+                List.of("revenue evidence"))).isTrue();
+        assertThat(new KeywordReadinessService(jdbc).markPendingReady(10)).isEqualTo(1);
+        long chunkId = jdbc.queryForObject("SELECT id FROM rag_chunk", Long.class);
+        var retriever = new EvidenceRetriever(jdbc);
+        var drafts = new BriefingDraftService(jdbc, retriever);
+        var calls = new AtomicInteger();
+        var generator = new BriefingGenerationService(retriever, drafts, (instruction, input) -> {
+            calls.incrementAndGet();
+            return "{\"summary\":\"공시의 매출 관련 내용을 확인했다.\",\"citation_ids\":[" + chunkId + "]}";
+        }, new ObjectMapper());
+        var mvc = MockMvcBuilders.standaloneSetup(new BriefingController(null,
+                new JavaBriefingPublication(drafts, new ObjectMapper()), "java")).build();
+
+        assertThatThrownBy(() -> generator.generate("CAMT", "revenue", Instant.now()))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("No eligible evidence");
+        assertThat(calls).hasValue(0);
+        var draft = generator.generate("CAMT", "revenue", Instant.now(), 30);
+        mvc.perform(get("/api/v1/briefings/CAMT").param("window", "30d"))
+                .andExpect(jsonPath("$.status").value("insufficient_sources"));
+        drafts.approve(draft.id(), draft.contentSha256(), "synthetic-operator");
+        mvc.perform(get("/api/v1/briefings/CAMT").param("window", "7d"))
+                .andExpect(jsonPath("$.status").value("insufficient_sources"));
+        mvc.perform(get("/api/v1/briefings/CAMT").param("window", "30d"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ready"))
+                .andExpect(jsonPath("$.freshness").value("stale"))
+                .andExpect(jsonPath("$.citations[0].url").value(filing.sourceUrl().toString()));
+        assertThat(calls).hasValue(1);
+    }
 
     @Test
     void camtEvidenceMustBeReviewedBeforeThePublicEndpointShowsTheWebContract() throws Exception {

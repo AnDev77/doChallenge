@@ -246,3 +246,12 @@
 - 이유·기능: 서버 전용 `.env`에서 `java`를 명시할 때만 기존 Java 승인 결과 조회를 선택한다. 초안을 자동 승인하거나 모델 호출을 GET에 연결하지 않는다. `python` 기본값은 기존 배포와 호환한다.
 - 검증·한계: PyYAML로 단일·Blue/Green의 세 API 서비스에 공개 공급자 전달값과 기본 `python`을 확인했고 `git diff --check`를 통과했다. 로컬 Gradle 배포 파일 다운로드가 네트워크 제한으로 실패해 Java 전체 시험/JAR은 원격 PR 게이트에서 확인해야 한다. 실제 EC2의 `.env` 수정·재배포, SEC 수집, Gemini 호출, 사람이 근거를 대조한 승인, Vercel의 종목 목록 연결은 아직 완료로 기록하지 않는다. 운영에서 `java`만 켜면 초안이 없을 때 `insufficient_sources`가 정상이다.
 - Learner's High 대조: DB/Storage p. 6의 상태 정합성 질문을 HTTP 성공과 승인 데이터 성공의 구분에 적용했다. [개발 대조 기록](docs/references/learners-high-development-log.md)과 [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)에 계획/검증 범위를 분리해 기록한다. 실제 품질·비용 비교는 직접 적용 없음.
+
+# CAMT 수집 후 30일 근거 선택 및 공개 본문 조회 (2026-11-24)
+
+- **시작·작업량:** 원격 main `b962053`과 열린 설정 PR #37을 확인하고 별도 브랜치에서 작업했다. CAMT의 최근 SEC 6-K 접수일은 11월 4일이므로 11월 24일에 새로 수집해도 기본 7일 검색은 해당 문서를 찾지 못한다. 실제 EC2 수집은 서버 접근 권한이 없어 이 변경의 완료 범위가 아니다.
+- **바뀐 파일·구조:** `BriefingOperatorRunner` → `BriefingGenerationService` → `BriefingDraftService`의 근거 검색과 저장 전 재검색에 **같은 명시적 lookbackDays**를 전달한다. `BriefingController`/`JavaBriefingPublication`은 Java 공개 모드에서만 `?window=30d`를 허용하고 근거 접수 시각이 요청 기간 안에 있는 승인 결과만 반환한다. [EC2 수집·본문 조회 절차](docs/briefing/java-operator-runbook.md)와 Java 통합·운영자 시험을 추가했다. 기본 7일과 Python 조회 계약은 유지한다.
+- **설계 이유·추가 기능:** `fetched_at`이 오늘이어도 공시의 `accepted_at`은 바뀌지 않는다. 운영자가 30일을 지정하면 검색·모델 입력·초안 인용 재확인까지 같은 기간을 쓰며, 승인 후 `30d` 조회는 접수일 기준 `stale`을 표시한다. 7일 요청에는 오래된 결과를 숨긴다. 실제 수집은 별도 비웹 프로세스로 수행하며 SEC 원문 파일을 서버 영속 디렉터리에 저장하고 DB 청크를 읽는다.
+- **요청에서 달라진 점·오류:** 앞서 새 수집을 불가능하다고 설명한 것은 잘못이었다. 수집은 가능하지만 7일 브리핑 생성과는 별개다. 저장 전 재검증에 남은 하드코딩 7일도 함께 수정했다. 프론트 연결·공개 최근 자료 여부는 이 단계에 포함하지 않는다.
+- **시험·미검증:** 20일 전 접수·방금 수집한 합성 CAMT 문서에 대해 기본 생성은 모델을 호출하지 않고, 명시적 30일 생성은 DRAFT만 저장하며, 승인 전·7일 조회는 비공개이고 승인된 30일 응답만 `ready`·`stale`·SEC 인용을 내는 통합 시험을 추가했다. 로컬 Gradle 8.5 배포 ZIP 다운로드가 네트워크 제한으로 실패해 Java 전체 시험·JAR는 원격 CI 결과를 확인해야 한다. 실제 SEC 수집·Gemini 호출·사람 승인·운영 API 응답은 아직 실행하지 않았다.
+- **Learner's High 대조:** 원본 DB/Storage p. 6의 정합성 질문을 공시 접수/수집 시각과 초안 재검증의 동일 기간 적용에 연결했다. [구현 대조표](docs/references/learners-high-implementation-map.md)와 [별도 개발 기록](docs/references/learners-high-development-log.md)을 갱신했다. 원본이 CAMT 30일 규칙을 제시한 것은 아니다. [포트폴리오 기록](docs/portfolio/java-rag-briefing-evidence.md)은 합성 시험까지만 완료형으로 쓴다.

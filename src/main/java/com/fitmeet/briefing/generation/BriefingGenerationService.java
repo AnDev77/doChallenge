@@ -43,16 +43,21 @@ public class BriefingGenerationService {
     }
 
     public Draft generate(String symbol, String query, Instant asOf) {
+        return generate(symbol, query, asOf, 7);
+    }
+
+    public Draft generate(String symbol, String query, Instant asOf, int lookbackDays) {
         if (asOf == null) throw new IllegalArgumentException("Missing as-of time");
+        if (lookbackDays < 1 || lookbackDays > 365) throw new IllegalArgumentException("Invalid lookback days");
         Instant snapshot = asOf.truncatedTo(ChronoUnit.MICROS);
-        List<Evidence> evidence = retriever.search(symbol, query, snapshot, 7, 8);
+        List<Evidence> evidence = retriever.search(symbol, query, snapshot, lookbackDays, 8);
         if (evidence.isEmpty()) throw new IllegalStateException("No eligible evidence; no model call");
 
         // No DB transaction spans an external, possibly slow and billable model call.
         String raw = model.complete(INSTRUCTION, evidenceInput(symbol, query, snapshot, evidence));
         Parsed parsed = parse(raw, evidence);
         // create rechecks cited IDs against the as-of retrieval before committing.
-        return drafts.create(symbol, query, snapshot, parsed.summary(), parsed.citationIds());
+        return drafts.create(symbol, query, snapshot, parsed.summary(), parsed.citationIds(), lookbackDays);
     }
 
     private String evidenceInput(String symbol, String query, Instant asOf, List<Evidence> evidence) {

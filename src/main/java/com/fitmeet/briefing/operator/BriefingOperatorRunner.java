@@ -54,7 +54,9 @@ public class BriefingOperatorRunner implements ApplicationRunner {
                 }
                 String symbol = required("app.briefing.operator.symbol");
                 String query = required("app.briefing.operator.query");
-                Draft draft = generation.generate(symbol, query, Instant.now());
+                int lookbackDays = Integer.parseInt(environment.getProperty(
+                        "app.briefing.operator.lookback-days", "7"));
+                Draft draft = generation.generate(symbol, query, Instant.now(), lookbackDays);
                 out.println("Created DRAFT " + draft.id() + "; inspect it before approval");
             }
             case "inspect" -> {

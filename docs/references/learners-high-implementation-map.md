@@ -17,6 +17,8 @@
 
 공개 조회의 정합성은 HTTP 200과 브리핑 상태를 구분해 판정한다. [단일 Compose](../../deploy/compose.yaml)와 [Blue/Green 구성](../../deploy/compose.bluegreen.yaml)은 `BRIEFING_PUBLIC_PROVIDER`를 전달하고 기본 `python`을 유지한다. `java` 전환 후에도 실제 승인 데이터가 없으면 `insufficient_sources`이며, 이 설정만으로 실공시·사람 검토·운영 공개가 입증되지는 않는다.
 
+2026-11-24 추가: [운영자 생성](../../src/main/java/com/fitmeet/briefing/operator/BriefingOperatorRunner.java)과 [초안 재검증](../../src/main/java/com/fitmeet/briefing/publication/BriefingDraftService.java)에 동일한 명시적 기간을 전달하고, [공개 30일 조회](../../src/main/java/com/fitmeet/briefing/JavaBriefingPublication.java)는 근거의 SEC 접수 시각으로 기간과 `stale`을 판정한다. [합성 CAMT 흐름 시험](../../src/test/java/com/fitmeet/briefing/CamtBriefingFlowIntegrationTest.java)을 추가했으나 실제 서버 수집·모델 호출·공개 결과는 아직 확인하지 않았다.
+
 ## 아직 적용했다고 말하면 안 되는 내용
 
 - **Kafka p. 4:** Java 브리핑 작업의 실제 producer/consumer, 영속 아웃박스, 재발행 멱등 키, DLQ, 순서·lag·rebalance 운영은 아직 없다. 현재 내부 생성 서비스는 동기 호출용이며 실행기도 없다.
