@@ -21,6 +21,8 @@
 
 2026-11-24 자동화 보충: [CAMT SSM 수집](../../deploy/camt_ingest/run.py)은 같은 Java 수집·준비 검사 경로를 반복 실행하고 SEC 원문 메타데이터·청크 한 건을 제한해 출력한다. [모의 시험](../../deploy/test_camt_ingest.py)은 이 고정 경로만 확인했다. 실제 운영 DB의 중복/무결성 결과는 첫 EC2 실행 전까지 미검증이다.
 
+2026-11-26 배포 검증 보충(p. 12): [이미지 릴리스](../../deploy/image_release.py)는 로컬에서 빌드·스모크한 같은 이미지를 ECR에 올리고, 운영에서는 digest로 pull한다. [계약 시험](../../deploy/test_image_release.py)은 커밋/이미지 연결, 입력 거부, API만 교체하는 명령과 실패 복귀를 모의한다. [Compose CI](../../.github/workflows/deploy-smoke.yml)는 동일 이미지의 API 재생성과 DB/Redis 컨테이너 보존을 확인한다. AWS 실제 업로드·운영 복구와 DB 롤백을 입증한 것은 아니다.
+
 ## 아직 적용했다고 말하면 안 되는 내용
 
 - **Kafka p. 4:** Java 브리핑 작업의 실제 producer/consumer, 영속 아웃박스, 재발행 멱등 키, DLQ, 순서·lag·rebalance 운영은 아직 없다. 현재 내부 생성 서비스는 동기 호출용이며 실행기도 없다.

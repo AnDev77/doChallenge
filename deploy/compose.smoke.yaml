@@ -7,6 +7,9 @@ services:
       - "127.0.0.1:8025:8025"
 
   api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: prod,smoke
       MAIL_HOST: mailpit

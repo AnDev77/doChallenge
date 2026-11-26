@@ -264,3 +264,12 @@
 - **사용자 요청과 다른 부분·제약:** 첫 AWS CloudFormation 역할·SSM 문서와 GitHub 환경, 서버 `SEC_USER_AGENT`는 계정 소유자가 한 번 설정해야 한다. 그 뒤 반복 실행은 Actions 버튼으로 처리한다. 아직 정기 스케줄은 첫 운영 성공 전 추가하지 않았다. 이 실행은 프론트 공개 브리핑이 아니다.
 - **시험·미검증:** Python 단위 6건은 환경 권한, 고정 명령, CAMT 출처와 출력 범위, IAM 분리, SSM 해시·응답 확인, 로컬 모의 실행을 통과했다. `git diff --check`를 확인했다. 실제 AWS 역할/문서 생성, EC2 SSM 실행, SEC/운영 MySQL 수집과 본문은 미검증이다. 원격 PR CI를 별도로 확인해야 한다.
 - **Learner's High 대조:** DB/Storage p. 6의 무결성·중복 질문을 기존 Java DB 검사 재사용과 고정된 수집 결과 확인에 적용했다. [대조 기록](docs/references/learners-high-development-log.md)과 [포트폴리오 근거](docs/portfolio/java-rag-briefing-evidence.md)를 분리했다. 원본에 SSM/Actions 구현이 있었다고 주장하지 않는다.
+
+## 2026-11-26 로컬/CI 이미지의 ECR digest 배포
+
+- 문제: 단일 운영 Compose의 build가 EC2에서 매번 이미지를 만들었고, 실제 실행 이미지를 커밋·불변 레지스트리 버전과 연결하지 못했다. `compose.yaml`은 필수 API_IMAGE만 실행하고 빌드는 CI 전용 `compose.smoke.yaml`로 이동했다. 시험 환경과 `.env.example`도 갱신했다.
+- 호출 흐름: `deploy/image_release.py publish` → 최신 main/깨끗한 checkout 확인 → git archive 기반 amd64 Buildx → 같은 이미지의 격리 MySQL/Redis health·채팅 스모크 → immutable ECR 태그 push → digest/커밋 release.json. `deploy --host` → SSH 표준입력 manifest → 서버 apply → 현재 healthy 이미지 ID 보관 → digest pull/라벨 확인 → API만 교체·health 대기 → 실행 ID 대조 → Nginx reload → .env와 이력 저장. 실패 시 보관한 이미지 복귀와 .env 재선택을 시도한다.
+- 설계 이유: 기존 ECR 후보 저장소·EC2 IAM 역할을 재사용한다. 로컬과 CI의 출력이 같은 manifest이므로 CI 검증 이미지도 재빌드 없이 승격한다. tag는 사람용 이름, digest는 실행 버전 식별자로 사용한다. 새 자동 운영 스케줄·원격 임의 shell·비밀값 업로드는 추가하지 않았다.
+- 사용자 요청 반영: 로컬 PC의 두 명령으로 publish/deploy를 수행하고 서버에서 반복 build하지 않는다. Docker Desktop 사용자는 WSL에서 동일 CLI를 사용한다. 상세 최초 설정·복귀·개념 질문은 [릴리스 안내](deploy/image-release.md)에 있다. 학습용 결함 PR #40은 포함하지 않았다.
+- 검증: 배포 Python 시험 53개가 로컬에서 통과했다. 운영 설정·CI overlay 검사, 실제 Java/Compose는 PR CI로 확인한다. 실제 ECR 업로드·EC2 교체·외부 HTTPS는 미실행이다. Docker 이미지 복귀는 DB/Flyway rollback이 아니며 단일 API 교체에는 짧은 중단이 가능하다.
+- Learner's High 대조: 테스트·마이그레이션 p.12의 검증/전환 질문을 이미지 승격·실패 복귀 시험으로 확장했다. ECR digest 설계 자체를 원본에서 가져왔다고 주장하지 않는다. 이미지 공급망 운영 실증·무중단 성과는 아직 없다.

@@ -21,6 +21,7 @@ def main() -> None:
     )
     key.chmod(0o600)
     values = {
+        "API_IMAGE": "shockgraph-api:smoke",
         "DB_NAME": "doChallenge",
         "DB_USER": "shockgraph",
         "DB_PASSWORD": secrets.token_urlsafe(32),

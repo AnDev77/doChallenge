@@ -19,6 +19,20 @@ jobs:
         run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml config --quiet
       - name: MySQL Redis Java Nginx 시험 기동
         run: docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml up -d --build --wait --wait-timeout 360
+      - name: 이미지를 재빌드하지 않고 API만 교체
+        shell: bash
+        run: |
+          compose() { docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml -f deploy/compose.smoke.yaml "$@"; }
+          docker compose --env-file deploy/.smoke.env -f deploy/compose.yaml config --format json | python3 -c 'import json,sys; assert "build" not in json.load(sys.stdin)["services"]["api"]'
+          mysql_before=$(compose ps -q mysql)
+          redis_before=$(compose ps -q redis)
+          image_before=$(docker image inspect shockgraph-api:smoke --format '{{.Id}}')
+          compose up -d --no-build --pull never --no-deps --force-recreate --wait --wait-timeout 180 api
+          test "$(compose ps -q mysql)" = "$mysql_before"
+          test "$(compose ps -q redis)" = "$redis_before"
+          test "$(docker inspect "$(compose ps -q api)" --format '{{.Image}}')" = "$image_before"
+          compose exec -T nginx nginx -t
+          compose exec -T nginx nginx -s reload
       - name: 이메일 인증 가입 로그인 종목방 재접속
         run: python3 deploy/smoke_test.py
       - name: 컨테이너 상태 요약
