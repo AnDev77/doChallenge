@@ -72,6 +72,18 @@ class EvidenceRetrieverTest {
     }
 
     @Test
+    void filingAcceptedBeforeAsOfButFetchedAfterAsOfIsNotAvailableYet() throws Exception {
+        save("CAMT", "0001109138", "0001109138-26-000008", "2026-11-17T12:00:00Z",
+                "2026-11-17T12:05:00Z", "revenue from later ingestion");
+        assertThat(readiness.markPendingReady(10)).isEqualTo(1);
+
+        assertThat(retriever.search("CAMT", "revenue", Instant.parse("2026-11-17T12:02:00Z"), 7, 8))
+                .isEmpty();
+        assertThat(retriever.search("CAMT", "revenue", Instant.parse("2026-11-17T12:06:00Z"), 7, 8))
+                .hasSize(1);
+    }
+
+    @Test
     void pendingRevisionBlocksOlderReadyVersionUntilItIsVerified() throws Exception {
         var accession = "0001109138-26-000003";
         save("CAMT", "0001109138", accession, "2026-11-17T12:00:00Z",

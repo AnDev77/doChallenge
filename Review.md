@@ -1,5 +1,13 @@
 # Review: 공개 브리핑 조회를 Python 내부 서비스와 연결
 
+## 2026-11-26 학습 실습 1: RAG 시점 격리 (병합·배포 금지)
+
+- 변경 파일·구조: `EvidenceRetriever.search`의 `fetched_at` SQL 바인딩 한 곳에 의도적 오류를 넣고, `EvidenceRetrieverTest`에 접수 12:00·수집 12:05·조회 12:02/12:06 UTC 경계 시험을 추가했다. 과제와 공식 Spring AI 참고 문서는 `docs/study/rag-asof-exercise.md`에 있다.
+- 선택 이유·기능: 사용자가 기존 코드의 미래 참조 편향을 직접 진단·수정해 보는 연습이다. 제품 기능이 추가된 것이 아니며, 작업 브랜치는 반드시 고친 뒤 별도 리뷰를 받아야 한다. `main`이나 서버에 반영하지 않는다.
+- 사용자 요청과 차이: 자동 구현 대신 학습용 결함, 재현 시험, 수정 조건만 제공한다. 답 패치는 제공하지 않는다.
+- 시험·한계: 이 브랜치에서 시점 경계 시험은 **실패하도록 설계**됐다. 전체 Java 21 시험과 JAR는 수정 후 검증한다. 실제 SEC/운영 MySQL 결과는 이 연습의 증거가 아니다.
+- Learner's High 대조: DB/Storage p. 6의 정합성 질문을 기존 `EvidenceRetriever` 시점 격리 사례로 연습한다. 새 기술 적용이나 포트폴리오 완료 성과는 아니다. `docs/references/learners-high-implementation-map.md`의 기존 적용 현황을 변경하지 않는다.
+
 ## 시작 상태와 범위
 
 2026-11-15 KST. Java main `553d113`의 회원·채팅 API를 바탕으로, 웹 [브리핑 #9](https://github.com/AnDev77/shockgraph-web/pull/9)와 [Python 공시 브리핑 #18](https://github.com/AnDev77/ShockGarph_AI/pull/18)을 연결하는 GET 경로를 분리해 구현했다. 기존 Java 배포·관심 저장 초안과 별개이며 외부 운영 서버 설정은 변경하지 않았다.

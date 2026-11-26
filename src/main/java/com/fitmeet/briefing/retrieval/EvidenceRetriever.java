@@ -51,7 +51,7 @@ public class EvidenceRetriever {
         args.add(symbol);
         args.add(LocalDateTime.ofInstant(asOf.minusSeconds(lookbackDays * 86400L), ZoneOffset.UTC));
         args.add(cutoff);
-        args.add(cutoff);
+        args.add(LocalDateTime.ofInstant(asOf.plusSeconds(lookbackDays * 86400L), ZoneOffset.UTC));
         args.add(cutoff);
         int index = 0;
         for (String word : words) {
