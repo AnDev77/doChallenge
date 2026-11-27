@@ -22,3 +22,7 @@ deploy/acme-webroot/**
 ### OS ###
 .DS_Store
 Thumbs.db
+
+# Local image publication and server release history
+release*.json
+deploy/.image-release*

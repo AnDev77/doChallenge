@@ -28,9 +28,7 @@ services:
     networks: [internal]
 
   api:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+    image: ${API_IMAGE:?API_IMAGE must identify a published release}
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
